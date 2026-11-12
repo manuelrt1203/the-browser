@@ -11,7 +11,7 @@ export type RequestedTitle = {
 
 /** Liste demandée, nettoyée : doublons et épisodes regroupés par série. */
 export const requestedTitles: RequestedTitle[] = [
-  { kind: "serie", title: "A Different World" },
+  { kind: "serie", title: "A Different World", year: 2026, id: 305357 },
   { kind: "serie", title: "A Knight of the Seven Kingdoms", id: 224372, year: 2026, aliases: ["A Knight of the Seven Kingdoms"] },
   { kind: "film", title: "Aladdin", year: 2019 },
   { kind: "serie", title: "The Boys", id: 76479, year: 2019, aliases: ["The Boys"] },
@@ -48,7 +48,7 @@ export const requestedTitles: RequestedTitle[] = [
   { kind: "film", title: "Kung Fu Panda 4", id: 1011985, year: 2024, aliases: ["Kung Fu Panda 4"] },
   { kind: "serie", title: "L’Été où je suis devenue jolie", id: 194766, year: 2022, aliases: ["L'Été où je suis devenue jolie"] },
   { kind: "film", title: "La Bataille de Gaulle : L’Âge de fer" },
-  { kind: "serie", title: "Lanterns" },
+  { kind: "serie", title: "Lanterns", year: 2026, id: 95350 },
   { kind: "film", title: "Le Crime du 3e étage" },
   { kind: "serie", title: "Les Carnets de l’apothicaire", id: 220542, year: 2023, aliases: ["Les Carnets de l'apothicaire"] },
   { kind: "film", title: "Le Samaritain", id: 629176, year: 2022, aliases: ["Le Samaritain"] },

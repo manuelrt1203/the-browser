@@ -1,7 +1,7 @@
 import { requestedTitles } from "../data/selection.ts";
 import type { Kind } from "../data/catalogue.ts";
 
-export const RESOLUTION_VERSION = 2;
+export const RESOLUTION_VERSION = 3;
 export type Reference = { kind: Kind; id: number; expectedTitle?: string; year?: number; season?: number; episode?: number };
 export type Candidate = { query: string; kind?: Kind; year?: number; season?: number; episode?: number };
 export type Pending = { input: string; reason: string; candidates?: { kind: Kind; id: number; title: string; year?: number }[] };
@@ -18,7 +18,7 @@ const aliases: Record<string, string> = {
   everybodyhateschris: "Tout le monde déteste Chris", dragonballsuperbeerus: "Dragon Ball Super",
   nanatsunotaizai: "The Seven Deadly Sins", nantsunotaizai: "The Seven Deadly Sins",
   nanatsunotaizai4fundonoshinpan: "The Seven Deadly Sins",
-  theapothecarydiaries: "Les Carnets de l’apothicaire", supermanandlois: "Superman et Loïs",
+  theapothecarydiaries: "Les Carnets de l’apothicaire", supermanandlois: "Superman et Loïs", supermanetlois: "Superman et Loïs",
   kungfukiller: "Kung Fu Jungle", kunfukiller: "Kung Fu Jungle", lesamaritain: "Le Samaritain",
   avatarangthelastairbender: "Avatar : Le Dernier Maître de l’air",
   avataraangthelastairbender: "Avatar Aang The Last Airbender",
@@ -26,7 +26,7 @@ const aliases: Record<string, string> = {
   thefaultinourstars: "Nos étoiles contraires", theflash: "Flash", thenun: "La Nonne",
   shreek1: "Shrek", shreek2: "Shrek 2", shreeek3: "Shrek le troisième", shreeek4: "Shrek 4 : Il était une fin",
   ipman1: "Ip Man", johnwick3: "John Wick : Parabellum", johnwickchapter2: "John Wick 2", johnwickchapter4: "John Wick : Chapitre 4",
-  sonicthehedgehog3: "Sonic 3, le film",
+  sonicthehedgehog3: "Sonic 3, le film", sonic3: "Sonic 3, le film",
   sullivanscrossing: "Sullivan’s Crossing", marvelsthepunisher: "Marvel’s The Punisher",
   theamazinspiderman2: "The Amazing Spider-Man : Le Destin d’un héros", theamazingspiderman2: "The Amazing Spider-Man : Le Destin d’un héros",
   miraculous: "Miraculous : Les Aventures de Ladybug et Chat Noir",
@@ -39,28 +39,39 @@ const aliases: Record<string, string> = {
 
 export function parseCandidate(input: string): Candidate | null {
   let text = input.normalize("NFKC").replace(/\bS[Oo](?=\d)/g, "S0").trim();
+  if (/^(?:synopsis\s*[^\p{L}\p{N}]*|[ée]pisodes?\s+\d+(?:\s*(?:et|à|,|-)?\s*\d+)*)$/iu.test(text)) return null;
+  const label = text.replace(/^[^\p{L}\p{N}#]+/u, "");
+  if (/^(?:(?:langue|taille|qualit[ée]|synopsis|code promo|disponible sur|rappel)\s*:|(?:bon|excellent) visionnage|tout(?:e?s)? nos (?:cha[iî]nes|canaux)|version convertie|cliqu(?:er|ez) sur le lien|accès à différents canaux|découvrez une sélection|l.accès est|ma cha[iî]ne youtube|veuillez|pour (?:faire appara[iî]tre|tout problème)|en cas de problème|mais comme|#film\s*\||(?:19|20)\d{2}\s*[‧·])/i.test(label)) return null;
   if (/(?:ajoute.*(?:dossier|canal)|abonnez|rejoignez|liens dans le canal|dossier complet)/i.test(text)) return null;
-  if (!text || /^\d+$/.test(text) || /^(?:index-v\d+-a\d+|sticker(?:\s+webp)?)$/i.test(text) || /https?:\/\//i.test(text)) return null;
+  if (!text || /^\d+$/.test(text) || /^(?:index-v\d+-a\d+(?:\.(?:mkv|mp4))?|sticker(?:[ .]webp)?)$/i.test(text) || /https?:\/\//i.test(text)) return null;
   const seasonEpisode = text.match(/\bS(?:aison)?\s*(\d+)\s*[|._ -]*(?:[ÉE]P?(?:ISODE)?)\s*(\d+)/i);
   const season = seasonEpisode?.[1] ?? text.match(/\bS(?:aison)?\s*(\d+)/i)?.[1];
-  const episode = seasonEpisode?.[2] ?? text.match(/\b[ÉE]P?(?:ISODE)?\s*(\d+)/i)?.[1];
+  const episode = seasonEpisode?.[2] ?? text.match(/\b[ÉE]P?(?:ISODE)?\s*[-:]?\s*(\d+)/i)?.[1];
+  const episodeTail = text.match(/\b(?:S(?:aison)?\s*\d+\s*[|._ -]*)?[ÉE]P?(?:ISODES?)?\s*[-:]?\s*\d+([\s\S]*)/i)?.[1];
+  const multipleEpisodes = episodeTail !== undefined && /^\s*(?:\d+\s*)*(?:et|à|,|-)\s*\d+/i.test(episodeTail);
   const year = text.match(/\b((?:19|20)\d{2})\b/)?.[1];
   const isFilm = /^\s*film\b/i.test(text);
   text = text.replace(/\.(?:mp4|mkv|avi|mov|mpg|mpeg|webm|m4v|ts)$/i, "")
     .replace(/\[[^\]]*\]/g, " ").replace(/@[\p{L}\p{N}_]+@/gu, " ").replace(/@[\p{L}\p{N}_]+/gu, " ")
     .replace(/(?:Oxtorrent[ ._]Com|Torrent911[ ._]com)/gi, " ")
     .replace(/[._|]/g, " ")
-    .replace(/\(\s*live[ -]?action\s*\)/gi, " ")
-    .replace(/^[^\p{L}\p{N}]*ACTION\s+ZONE[^\p{L}\p{N}]*/iu, "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/(\d+)(?:ème|eme)/gi, "$1e")
+    .replace(/^\s*F\s+(?=John Wick)/i, "")
+    .replace(/^\s*film\s*\d+\s*:\s*/i, "")
+    .replace(/^[^\p{L}\p{N}]*ACTION[ -]+ZONE[^\p{L}\p{N}]*/iu, "")
     .replace(/^\s*(?:voir|film)\s+/i, "")
     .replace(/\b(?:S(?:aison)?\s*\d+\s*[- ]*(?:[ÉE]P?(?:ISODE)?)\s*\d+|S(?:aison)?\s*\d+)\b.*$/i, "")
-    .replace(/\b[ÉE]P?(?:ISODE)?\s*\d+\s*/gi, " ")
+    .replace(/\b[ÉE]P?(?:ISODE)?\s*[-:]?\s*\d+(?:\s*(?:et|à|,|-)\s*\d+)*\s*/gi, " ")
     .replace(/\b(?:19|20)\d{2}\b/g, " ")
     .replace(/\b(?:film\s+complet|vfq?|vostfr|french|truefrench|multi|hdcam|hdtv|web[ -]?rip|web[ -]?dl|webrip|h26[45]|x26[45]|\d{3,4}p|galaxy)\b.*$/i, "")
+    .replace(/\s+(?:saison finale?|le final de la saison).*$/i, "")
+    .replace(/\bfilm\s*$/i, "")
+    .replace(/\bFR\s*$/i, "")
     .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "").replace(/\s+/g, " ").trim();
   if (!text || text.length > 180 || text.split(/\s+/).length > 16 || /^\d+$/.test(text)) return null;
   const key = normalizeTitle(text);
-  text = aliases[key] ?? text;
+  text = key === "thepunisher" && (season || episode) ? "Marvel’s The Punisher" : aliases[key] ?? text;
   const known = requestedTitles.filter((t) => normalizeTitle(t.title.replace(/\s*\(\d{4}\)$/, "")) === normalizeTitle(text));
   let kind: Kind | undefined = season || episode ? "serie" : isFilm ? "film" : undefined;
   let inferredYear = year ? Number(year) : undefined;
@@ -68,7 +79,7 @@ export function parseCandidate(input: string): Candidate | null {
     kind ??= known[0].kind;
     inferredYear ??= known[0].year ?? (Number(known[0].title.match(/\((\d{4})\)$/)?.[1]) || undefined);
   }
-  return { query: text, ...(kind ? { kind } : {}), ...(inferredYear ? { year: inferredYear } : {}), ...(season ? { season: Number(season) } : {}), ...(episode ? { episode: Number(episode) } : {}) };
+  return { query: text, ...(kind ? { kind } : {}), ...(inferredYear ? { year: inferredYear } : {}), ...(season ? { season: Number(season) } : {}), ...(episode && !multipleEpisodes && Number(episode) > 0 ? { episode: Number(episode) } : {}) };
 }
 
 export class TmdbUnavailable extends Error { name = "TmdbUnavailable"; }
@@ -104,27 +115,41 @@ export function createResolver() {
   const memo = new Map<string, Promise<Decision>>();
   const episodes = new Map<string, Promise<boolean>>();
   async function resolveUncached(candidate: Candidate): Promise<Decision> {
+    const known = requestedTitles.filter((t) => t.id !== undefined && (!candidate.kind || t.kind === candidate.kind) &&
+      [t.title, ...(t.aliases ?? [])].some((name) => normalizeTitle(name) === normalizeTitle(candidate.query)) && (!candidate.year || t.year === candidate.year));
+    if (known.length === 1) {
+      const detail = await tmdbRequest<Item>(`/${known[0].kind === "film" ? "movie" : "tv"}/${known[0].id}`);
+      if (detail && detail.id === known[0].id && matchesCandidate(detail, known[0].kind, candidate)) return { title: reference(detail, known[0].kind) };
+      // Un ancien ID ne peut pas être utilisé s’il ne valide plus le titre et l’année.
+    }
     const endpoint = candidate.kind === "film" ? "/search/movie" : candidate.kind === "serie" ? "/search/tv" : "/search/multi";
-    const items: Item[] = [];
-    let pages = 1;
-    for (let page = 1; page <= Math.min(pages, 3); page++) {
-      const data = await tmdbRequest<{ results: Item[]; total_pages: number }>(endpoint, { query: candidate.query, page: String(page), include_adult: "false" });
-      if (!data || !Array.isArray(data.results) || !Number.isSafeInteger(data.total_pages) || data.total_pages < 0) throw new TmdbUnavailable("Réponse TMDB invalide");
-      pages = data.total_pages;
-      items.push(...data.results);
+    for (const language of ["fr-FR", "en-US"]) {
+      const items: Item[] = [];
+      let pages = 1;
+      for (let page = 1; page <= Math.min(pages, 3); page++) {
+        const data = await tmdbRequest<{ results: Item[]; total_pages: number }>(endpoint, { query: candidate.query, language, page: String(page), include_adult: "false",
+          ...(candidate.year && candidate.kind === "film" ? { primary_release_year: String(candidate.year) } : {}),
+          ...(candidate.year && candidate.kind === "serie" ? { first_air_date_year: String(candidate.year) } : {}),
+        });
+        if (!data || !Array.isArray(data.results) || !Number.isSafeInteger(data.total_pages) || data.total_pages < 0) throw new TmdbUnavailable("Réponse TMDB invalide");
+        pages = data.total_pages;
+        items.push(...data.results);
+      }
+      if (pages > 3) return { reason: "recherche-incomplete" };
+      const matches = new Map<string, { item: Item; kind: Kind }>();
+      for (const item of items) {
+        const kind = candidate.kind ?? (item.media_type === "movie" ? "film" : item.media_type === "tv" ? "serie" : undefined);
+        if (kind && matchesCandidate(item, kind, candidate)) matches.set(`${kind}:${item.id}`, { item, kind });
+      }
+      if (matches.size === 0 && language === "fr-FR") continue;
+      if (matches.size !== 1) return { reason: matches.size ? "ambigu" : "introuvable", candidates: [...matches.values()].map(({ item, kind }) => ({ kind, id: item.id, title: (item.title ?? item.name)!, year: itemYear(item, kind) })) };
+      const { item, kind } = [...matches.values()][0];
+      // Vérifier le détail : l’ID, le type, le titre et l’année doivent encore correspondre.
+      const detail = await tmdbRequest<Item>(`/${kind === "film" ? "movie" : "tv"}/${item.id}`, { language });
+      if (!detail || detail.id !== item.id || !matchesCandidate(detail, kind, candidate)) return { reason: "fiche-incoherente" };
+      return { title: reference(detail, kind) };
     }
-    if (pages > 3) return { reason: "recherche-incomplete" };
-    const matches = new Map<string, { item: Item; kind: Kind }>();
-    for (const item of items) {
-      const kind = candidate.kind ?? (item.media_type === "movie" ? "film" : item.media_type === "tv" ? "serie" : undefined);
-      if (kind && matchesCandidate(item, kind, candidate)) matches.set(`${kind}:${item.id}`, { item, kind });
-    }
-    if (matches.size !== 1) return { reason: matches.size ? "ambigu" : "introuvable", candidates: [...matches.values()].map(({ item, kind }) => ({ kind, id: item.id, title: (item.title ?? item.name)!, year: itemYear(item, kind) })) };
-    const { item, kind } = [...matches.values()][0];
-    // Vérifier le détail : l’ID, le type, le titre et l’année doivent encore correspondre.
-    const detail = await tmdbRequest<Item>(`/${kind === "film" ? "movie" : "tv"}/${item.id}`);
-    if (!detail || detail.id !== item.id || !matchesCandidate(detail, kind, candidate)) return { reason: "fiche-incoherente" };
-    return { title: reference(detail, kind) };
+    return { reason: "introuvable" };
   }
   return async (candidate: Candidate): Promise<Decision> => {
     const key = JSON.stringify([normalizeTitle(candidate.query), candidate.kind, candidate.year]);
@@ -154,7 +179,7 @@ export async function resolvePublication(
   resolve = createResolver(),
 ): Promise<Resolution> {
   const result: Resolution = { titles: [], pending: [], review: [], ignored: [] };
-  const texts = [...new Set([...(input.text ?? "").split(/\r?\n/), input.fileName ?? "", ...(input.links ?? [])].map((s) => s.trim()).filter(Boolean))];
+  const texts = [...new Set([input.fileName ?? "", ...(input.text ?? "").split(/\r?\n/), ...(input.links ?? [])].map((s) => s.trim()).filter(Boolean))];
   const explicit = texts.flatMap((line) => [...line.matchAll(/https:\/\/(?:www\.)?themoviedb\.org\/(movie|tv)\/(\d+)(?=$|[\s/?#-])/g)]);
   if (explicit.length) {
     const seen = new Set<string>();
@@ -169,7 +194,10 @@ export async function resolvePublication(
       else result.review.push({ input: match[0], reason: "lien-tmdb-invalide" });
     }
   } else {
-    const parsedLines = texts.slice(0, 8).map((line) => ({ line, candidate: parseCandidate(line) }));
+    const allLines = texts.map((line) => ({ line, candidate: parseCandidate(line) }));
+    result.ignored.push(...allLines.filter((item) => !item.candidate).map((item) => item.line));
+    const usefulLines = allLines.filter((item) => item.candidate);
+    const parsedLines = usefulLines.slice(0, 8);
     for (const { line, candidate } of parsedLines) {
       if (!candidate) { result.ignored.push(line); continue; }
       const related = parsedLines.flatMap((item) => item.candidate && normalizeTitle(item.candidate.query) === normalizeTitle(candidate.query) ? [item.candidate] : []);
@@ -180,7 +208,7 @@ export async function resolvePublication(
       if (decision.title) result.titles.push(decision.title);
       if (!decision.title || decision.reason) result.review.push({ input: line, reason: decision.reason ?? "non-resolu", ...(decision.candidates ? { candidates: decision.candidates } : {}) });
     }
-    for (const line of texts.slice(8)) result.review.push({ input: line, reason: "trop-de-lignes-a-traiter" });
+    for (const { line } of usefulLines.slice(8)) result.review.push({ input: line, reason: "trop-de-lignes-a-traiter" });
     // Une légende et un nom de fichier qui identifient deux œuvres ne sont pas fusionnés au hasard.
     const unique = new Set(result.titles.map((t) => `${t.kind}:${t.id}`));
     const seasons = new Set(result.titles.flatMap((t) => t.season === undefined ? [] : [t.season]));

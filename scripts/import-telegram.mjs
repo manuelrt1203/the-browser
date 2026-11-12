@@ -81,10 +81,11 @@ report.unprocessedPosts = messages.length - report.posts;
 report.recognizedTitles = [...unique].sort();
 report.review.sort((a,b) => a.messageId-b.messageId);
 report.mediaCoveragePercent = offline || !report.mediaPosts ? null : Math.round(10000*report.fullyResolvedMediaPosts/report.mediaPosts)/100;
+report.titleCoveragePercent = offline || !report.mediaPosts ? null : Math.round(10000*report.resolvedMediaPosts/report.mediaPosts)/100;
 report.precisionPercent = null; // Nécessite une vérité terrain validée, pas le seul succès des requêtes.
 report.thresholdMet = threshold === undefined ? null : (!offline && report.mediaCoveragePercent !== null && report.mediaCoveragePercent >= threshold && report.failed === 0 && report.unprocessedPosts === 0);
 await writeFile(reportFile,JSON.stringify(report,null,2)+'\n',{mode:0o600});
-console.log(JSON.stringify({channelId,mode:report.mode,posts:report.posts,imported:report.imported,unchanged:report.unchanged,failed:report.failed,unprocessedPosts:report.unprocessedPosts,uniqueTitles:unique.size,mediaPosts:report.mediaPosts,fullyResolvedMediaPosts:report.fullyResolvedMediaPosts,mediaCoveragePercent:report.mediaCoveragePercent,precisionPercent:null,reviewPosts:report.review.length,thresholdMet:report.thresholdMet,report:reportFile}));
+console.log(JSON.stringify({channelId,mode:report.mode,posts:report.posts,imported:report.imported,unchanged:report.unchanged,failed:report.failed,unprocessedPosts:report.unprocessedPosts,uniqueTitles:unique.size,mediaPosts:report.mediaPosts,fullyResolvedMediaPosts:report.fullyResolvedMediaPosts,mediaCoveragePercent:report.mediaCoveragePercent,titleCoveragePercent:report.titleCoveragePercent,precisionPercent:null,reviewPosts:report.review.length,thresholdMet:report.thresholdMet,report:reportFile}));
 // Invalider le cache après l’import si la configuration du site est disponible.
 if (!offline && !dryRun && report.imported > 0 && process.env.SITE_URL && process.env.TELEGRAM_WEBHOOK_SECRET) {
   try {

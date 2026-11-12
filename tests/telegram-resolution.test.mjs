@@ -12,7 +12,7 @@ const fixtures = [
   ['Miraculous SO7E01.mp4','Miraculous : Les Aventures de Ladybug et Chat Noir','serie',2015,7,1],
   ['Superman And Lois 2021.mp4','Superman et Loïs','serie',2021],
   ['EP 2Squid Game.mp4','Squid Game','serie',2021,undefined,2],
-  ['A Different Worldt S01E02.mp4','A Different World','serie',undefined,1,2],
+  ['A Different Worldt S01E02.mp4','A Different World','serie',2026,1,2],
   ['Aladdin 2019.mp4','Aladdin','film',2019],
   ['Brothers.2009.FRENCH.mp4','Brothers','film',2009],
   ['Film Flashpoint 2007 @FilmSerieFeuilleton.mp4','Flashpoint','film',2007],
@@ -69,7 +69,7 @@ test('l’exemple utilisateur lit nom de fichier et texte, conserve saison/épis
     assert.equal(result.titles[0].id,94997);
     assert.equal(result.titles[0].season,3);
     assert.equal(result.titles[0].episode,1);
-    assert.equal(searches,1);
+    assert.equal(searches,0);
   },url => {
     if(url.pathname.endsWith('/search/tv')){searches++;return Response.json({results:[show],total_pages:1});}
     if(url.pathname.includes('/season/'))return Response.json({season_number:3,episode_number:1});
@@ -138,3 +138,57 @@ test('les six anciennes associations erronées ou de mauvaise version ne sont pl
   assert.equal(requestedTitles.find(t=>t.title==='Moana').year,2026);
   assert.equal(requestedTitles.find(t=>t.title==='Dragon Ball Super').kind,'serie');
 });
+
+test('les lignes techniques et promotionnelles du rapport sont ignorées sans ignorer leurs titres',()=>{
+ for(const line of ['🌍 Langue : VF','💾 Taille : 555 Mo','✅ Bon visionnage ! 🍿','📲 Disponible sur : @NXs_films','Qualité : 320P','▶️TOUT NOS CANAUX ⬅️','✉️ TOUT NOS CHAÎNES ✉️','code promo : NICEMANN','#Film | #Aventure #Fantastique | 2h33','2023 ‧ Cinéma de fantasy/Musical ‧ 2h 15m','sticker.webp','index-v1-a1.mkv'])assert.equal(parseCandidate(line),null,line);
+ assert.equal(parseCandidate('Harry.Potter.1.Film.VF.mp4').query,'Harry Potter à l’école des sorciers');
+ assert.equal(parseCandidate('The Punisher (Saison 1) Episode - 01').query,'Marvel’s The Punisher');
+ assert.equal(parseCandidate('The Punisher (Saison 1) Episode - 01').episode,1);
+ assert.equal(parseCandidate('Superman et Lois s1e1').query,'Superman et Loïs');
+ assert.equal(parseCandidate('Sonic 3').query,'Sonic 3, le film');
+ assert.equal(parseCandidate('Brothers 2009 (Tobey McGuire)👍').query,'Brothers');
+ assert.equal(parseCandidate('Le_Crime_du_3ème_Etage_2026_FRENCH.mkv').query,'Le Crime du 3e Etage');
+});
+
+test('un identifiant connu vérifié contourne les pages sans relâcher la vérification',()=>mockTmdb(async()=>{
+ const result=await createResolver()({query:'Superman et Loïs',kind:'serie',year:2021});
+ assert.equal(result.title.id,95057);
+},url=>{
+ assert.equal(url.pathname,'/3/tv/95057');
+ return Response.json({id:95057,name:'Superman & Loïs',original_name:'Superman & Lois',first_air_date:'2021-01-01'});
+}));
+
+test('le filtre de recherche transmet explicitement l’année du remake',()=>mockTmdb(async()=>{
+ const result=await createResolver()({query:'Aladdin',kind:'film',year:2019});
+ assert.equal(result.title.id,420817);
+},url=>{
+ if(url.pathname.includes('/search/')){
+  assert.equal(url.searchParams.get('primary_release_year'),'2019');
+  return Response.json({results:[{id:420817,title:'Aladdin',release_date:'2019-01-01'}],total_pages:1});
+ }
+ return Response.json({id:420817,title:'Aladdin',release_date:'2019-01-01'});
+}));
+
+test('les deux versions confirmées par le propriétaire restent distinctes des homonymes',()=>{
+ assert.equal(parseCandidate('A_Different_Worldt_S01E01_MULTi.mkv').year,2026);
+ assert.equal(parseCandidate('Lanterns.S01e08.Final.Web.H264.mp4').year,2026);
+});
+
+test('les mentions techniques ne consomment pas le budget des titres et le fichier reste traité',async()=>{
+ let count=0;
+ const result=await resolvePublication({fileName:'Brothers 2009.mp4',text:Array(15).fill('Qualité : 320P').join('\n')},async()=>{count++;return {title:{kind:'film',id:2,expectedTitle:'Brothers',year:2009}};});
+ assert.equal(count,1);assert.equal(result.titles.length,1);assert.deepEqual(result.review,[]);
+ assert.equal(parseCandidate('Reacher ep 3 et4').query,'Reacher');
+ assert.equal(parseCandidate('Reacher ep 3 et4').episode,undefined);
+ assert.equal(parseCandidate('Episodes 3 4 et 5'),null);
+ assert.equal(parseCandidate('Synopsis 📽️📌'),null);
+});
+
+test('un titre anglais dont le titre original est japonais peut être vérifié sans rapprochement approximatif',()=>mockTmdb(async()=>{
+ const result=await createResolver()({query:'Demon City',kind:'film',year:2025});
+ assert.equal(result.title.id,123);
+ assert.equal(result.title.expectedTitle,'鬼ゴロシ');
+},url=>{
+ if(url.pathname.includes('/search/') && url.searchParams.get('language')==='fr-FR')return Response.json({results:[],total_pages:0});
+ return Response.json(url.pathname.includes('/search/')?{results:[{id:123,title:'Demon City',original_title:'鬼ゴロシ',release_date:'2025-02-27'}],total_pages:1}:{id:123,title:'Demon City',original_title:'鬼ゴロシ',release_date:'2025-02-27'});
+}));

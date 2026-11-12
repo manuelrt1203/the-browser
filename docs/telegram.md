@@ -111,3 +111,13 @@ node --env-file=.env.production.local scripts/check-catalogue-storage.mjs
 ```
 
 Le contrôle lit les publications et exécute la logique de migration avec l’écriture HSET supprimée du script. Il n’affiche ni les messages ni les secrets. Les erreurs Redis fournissent le statut HTTP et une cause expurgée des jetons connus. L’import effectue désormais ce contrôle avant les recherches TMDB et s’arrête sur une erreur globale de stockage au lieu de répéter la même erreur pour chaque publication.
+
+## Corrections issues du premier rapport réel (version 3)
+
+Le rapport de version 2 contient 348 publications à examiner et 538 motifs, dont des répétitions. Les nouvelles règles ignorent les lignes techniques/promotions explicites (langue, taille, qualité, appels à rejoindre un canal, etc.) et gardent le nom du fichier prioritaire dans le budget de traitement. Elles traitent les suffixes `Film VF`, les variantes de Superman & Lois, The Punisher accompagné d’une saison, les épisodes annoncés en groupe et les titres français/anglais sans rapprochement approximatif.
+
+Pour un titre déjà répertorié, le détail de l’ID est vérifié en premier : nom, type et année restent obligatoires, puis une recherche prend le relais en cas d’incohérence. Pour les recherches, l’année est envoyée au bon endpoint TMDB et une recherche en anglais peut compléter une absence de correspondance française. Une ambiguïté française n’est jamais remplacée par un seul résultat anglais. Les détails sont vérifiés dans la langue de la correspondance et le titre original est conservé pour la vérification à l’affichage.
+
+Le propriétaire a confirmé A Different World **2026** et Lanterns **DC/HBO 2026**. Les IDs issus des candidats de son rapport sont encore contrôlés auprès de TMDB à chaque résolution ; ils ne sont pas considérés comme valides sur leur seule présence dans la sélection.
+
+Le bilan fournit désormais `titleCoveragePercent` (publications vidéo dont le titre est reconnu) séparément de `mediaCoveragePercent` (reconnaissance complète, sans point en attente, y compris les épisodes). Aucun des deux ne constitue une précision validée à 99 %. Les contradictions de numéro d’épisode et les différences entre saisons déclarées et organisation TMDB restent à examiner ; les épisodes ne sont jamais renumérotés automatiquement.
