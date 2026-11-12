@@ -56,7 +56,7 @@ test('lecture Redis, état invalide et erreurs réseau ne produisent pas un faux
     await assert.rejects(readChannelState());
   }
   globalThis.fetch = async () => { throw new Error('offline'); };
-  await assert.rejects(saveChannelPost('-100123',post),/offline/);
+  await assert.rejects(saveChannelPost('-100123',post),/Redis inaccessible/);
 }));
 
 test('Vercel refuse le stockage éphémère et les configurations Redis partielles', () => environment(async () => {
@@ -71,4 +71,33 @@ test('Vercel refuse le stockage éphémère et les configurations Redis partiell
   process.env.KV_REST_API_URL = 'http://test-redis.example';
   process.env.KV_REST_API_TOKEN = 'test-token';
   await assert.rejects(readChannelState(), /HTTPS/);
+}));
+
+test('le diagnostic exécute la migration sans HSET ni modification de ARGV', () => environment(async () => {
+  const {checkCatalogueStorage}=await import('../src/lib/telegram-store.ts');
+  const seen=[];
+  globalThis.fetch=async (_url,options)=>{
+    const command=JSON.parse(options.body);seen.push(command);
+    if(command[0]==='HGETALL')return Response.json({result:['-100123:1',JSON.stringify(post)]});
+    assert.equal(command[0],'EVAL');
+    assert.doesNotMatch(command[1],/redis.call\('HSET'/);
+    assert.doesNotMatch(command[1],/ARGV\[\d+\]\s*=(?!=)/);
+    assert.match(command[1],/serialized = string.gsub/);
+    return Response.json({result:1});
+  };
+  assert.deepEqual(await checkCatalogueStorage(),{ok:true,posts:1,migrationDryRun:true});
+  assert.equal(seen.length,2);
+}));
+
+test('les erreurs Redis indiquent la cause sans divulguer les jetons', () => environment(async () => {
+  const {CatalogueStorageError}=await import('../src/lib/telegram-store.ts');
+  globalThis.fetch=async()=>Response.json({error:'ERR readonly token test-token Bearer hidden-value'},{status:400});
+  await assert.rejects(saveChannelPost('-100123',post),error=>{
+    assert.ok(error instanceof CatalogueStorageError);
+    assert.equal(error.code,'REDIS_COMMAND');
+    assert.match(error.message,/HTTP 400/);
+    assert.match(error.message,/readonly/);
+    assert.doesNotMatch(error.message,/test-token|hidden-value/);
+    return true;
+  });
 }));

@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { hasCatalogueStorage, saveChannelPost } from '../src/lib/telegram-store.ts';
+import { CatalogueStorageError, checkCatalogueStorage, hasCatalogueStorage, saveChannelPost } from '../src/lib/telegram-store.ts';
 import { RESOLUTION_VERSION, createResolver, parseCandidate, resolvePublication } from '../src/lib/telegram-resolution.ts';
 
 const [file, exportId, ...flags] = process.argv.slice(2);
@@ -21,6 +21,14 @@ if (!channel) throw new Error('Canal demandé absent de l’export');
 const channelId = `-100${channel.id}`;
 if (!dryRun && !offline && process.env.TELEGRAM_CHANNEL_ID && channelId !== process.env.TELEGRAM_CHANNEL_ID) throw new Error('ID du canal différent de la configuration. Aucun message modifié.');
 const flatten = (text) => Array.isArray(text) ? text.map((part) => typeof part === 'string' ? part : part.text ?? '').join('') : text ?? '';
+// Détecter une erreur globale de stockage avant de lancer des centaines de recherches.
+if (!dryRun && !offline) {
+  try { if (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) await checkCatalogueStorage(); }
+  catch (error) {
+    console.error(error instanceof CatalogueStorageError ? `${error.code}: ${error.message}` : "Échec du contrôle Redis. Aucun message modifié.");
+    process.exit(1);
+  }
+}
 const resolve = createResolver();
 const report = { channelId, resolutionVersion:RESOLUTION_VERSION, mode: offline ? 'offline-no-verification' : dryRun ? 'dry-run' : 'import', posts:0, imported:0, unchanged:0, failed:0, mediaPosts:0, resolvedMediaPosts:0, fullyResolvedMediaPosts:0, recognizedTitles:[], review:[], errors:[], offlineCandidates:[] };
 const unique = new Set();
@@ -63,8 +71,8 @@ await Promise.all(Array.from({length: Math.min(3,messages.length)}, async () => 
     } catch (error) {
       // Une panne réseau n’est jamais comptée comme un titre absent ni comme un import réussi.
       report.failed++;
-      if (error instanceof Error && error.name === 'TmdbUnavailable') halted = true;
-      report.errors.push({messageId:message.id,reason:error instanceof Error && error.name === 'TmdbUnavailable' ? error.message : 'Échec de résolution ou sauvegarde'});
+      if (error instanceof CatalogueStorageError || (error instanceof Error && error.name === 'TmdbUnavailable')) halted = true;
+      report.errors.push({messageId:message.id,phase:error instanceof CatalogueStorageError ? 'storage' : 'resolution',reason:error instanceof CatalogueStorageError || (error instanceof Error && error.name === 'TmdbUnavailable') ? error.message : 'Échec de résolution ou sauvegarde'});
     }
     if (report.posts % 100 === 0) console.error(`Progression : ${report.posts}/${messages.length} publications`);
   }

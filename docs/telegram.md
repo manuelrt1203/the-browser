@@ -101,3 +101,13 @@ Passer ce fichier avec `--overrides corrections.json` lors de la simulation puis
 `mediaCoveragePercent` est le pourcentage de publications vidéo reconnues sans cas en attente. Ce n’est **pas** un taux d’exactitude. `precisionPercent` reste `null` tant qu’aucune vérité terrain indépendante n’a été validée. Les tests de régression couvrent les graphies de l’export, les remakes, les contradictions, l’import, les doublons et les réanalyses ; leur réussite ne démontre pas 99 % d’exactitude sur le catalogue réel.
 
 L’option `--offline` produit les candidats de l’export sans accès TMDB, sans écriture Redis et sans prétendre valider les œuvres. Les rapports contiennent des métadonnées du canal ; ils sont ignorés par Git et doivent être conservés localement.
+
+### Échec global de sauvegarde
+
+Si le bilan indique `failed: 855` et `imported: 0`, les titres reconnus ne prouvent pas que les données ont été enregistrées. Vérifier le stockage sans écrire :
+
+```sh
+node --env-file=.env.production.local scripts/check-catalogue-storage.mjs
+```
+
+Le contrôle lit les publications et exécute la logique de migration avec l’écriture HSET supprimée du script. Il n’affiche ni les messages ni les secrets. Les erreurs Redis fournissent le statut HTTP et une cause expurgée des jetons connus. L’import effectue désormais ce contrôle avant les recherches TMDB et s’arrête sur une erreur globale de stockage au lieu de répéter la même erreur pour chaque publication.

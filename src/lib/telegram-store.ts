@@ -39,19 +39,35 @@ function redisConfiguration() {
   return { url: endpoint.toString(), token };
 }
 
+export class CatalogueStorageError extends Error {
+  name = "CatalogueStorageError";
+  readonly code: string;
+  constructor(code: string, message: string) { super(message); this.code = code; }
+}
+function safeRedisError(message: string) {
+  let safe = message;
+  for (const value of [process.env.KV_REST_API_TOKEN, process.env.UPSTASH_REDIS_REST_TOKEN, process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_WEBHOOK_SECRET, process.env.TMDB_READ_TOKEN]) {
+    if (value && value.length >= 4) safe = safe.replaceAll(value, "[REDACTED]");
+  }
+  return safe.replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]").replace(/eyJ[A-Za-z0-9_.-]{40,}/g, "[REDACTED]").slice(0, 600);
+}
 async function redisCommand(command: (string | number)[]) {
   const config = redisConfiguration();
   if (!config) throw new Error("Redis non configuré");
-  const response = await fetch(config.url, {
+  let response;
+  try { response = await fetch(config.url, {
     method: "POST",
     headers: { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json" },
     body: JSON.stringify(command),
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) throw new Error("Stockage Redis indisponible");
-  const data = await response.json() as { result?: unknown; error?: string };
-  if (data.error || !("result" in data)) throw new Error("Commande Redis refusée");
+  }); } catch { throw new CatalogueStorageError("REDIS_NETWORK", "Redis inaccessible ou délai dépassé"); }
+  let data: { result?: unknown; error?: string };
+  try { data = await response.json(); }
+  catch { throw new CatalogueStorageError("REDIS_RESPONSE", `Redis HTTP ${response.status} : réponse non JSON`); }
+  if (!response.ok || data.error || !("result" in data)) {
+    throw new CatalogueStorageError("REDIS_COMMAND", `Redis HTTP ${response.status} : ${typeof data.error === "string" ? safeRedisError(data.error) : "commande refusée"}`);
+  }
   return data.result;
 }
 
@@ -67,7 +83,8 @@ function redisKey() {
 // objets Lua, ce qui corromprait titles/pending/review pendant une migration.
 const SAVE_POST_SCRIPT = `
 local old = redis.call('HGET', KEYS[1], ARGV[1])
-local incoming = cjson.decode(ARGV[2])
+local serialized = ARGV[2]
+local incoming = cjson.decode(serialized)
 if old then
   local current = cjson.decode(old)
   local incomingRevision = incoming.resolutionVersion or 0
@@ -80,13 +97,30 @@ if old then
   end
   if current.version == incoming.version and upgrade then
     local retainedUpdate = math.max(current.updateId, incoming.updateId)
-    ARGV[2] = string.gsub(ARGV[2], '"updateId":%-?%d+', '"updateId":' .. tostring(retainedUpdate), 1)
-    if old == ARGV[2] then return 0 end
+    serialized = string.gsub(serialized, '"updateId":%-?%d+', '"updateId":' .. tostring(retainedUpdate), 1)
+    if old == serialized then return 0 end
   end
 end
-redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+redis.call('HSET', KEYS[1], ARGV[1], serialized)
 return 1
 `;
+
+/** Vérifie lecture et script de migration sans modifier aucune publication. */
+export async function checkCatalogueStorage() {
+  if (!redisConfiguration()) throw new CatalogueStorageError("REDIS_CONFIG", "Configurer les variables Redis REST");
+  const state = await readChannelState();
+  const first = Object.entries(state.posts)[0];
+  const field = first?.[0] ?? "__diagnostic__";
+  const current = first?.[1];
+  const probe: ChannelPost = current
+    ? { ...current, updateId: -1, resolutionVersion: (current.resolutionVersion ?? 0) + 1 }
+    : { messageId: 1, version: 0, updateId: -1, text: "", resolutionVersion: 2, titles: [], pending: [] };
+  const write = "redis.call('HSET', KEYS[1], ARGV[1], serialized)";
+  if (!SAVE_POST_SCRIPT.includes(write)) throw new Error("Diagnostic sans écriture impossible");
+  const dryScript = SAVE_POST_SCRIPT.replace(write, "-- diagnostic: aucune écriture");
+  await redisCommand(["EVAL", dryScript, 1, redisKey(), field, JSON.stringify(probe), "1"]);
+  return { ok: true, posts: Object.keys(state.posts).length, migrationDryRun: true };
+}
 
 function validateState(value: unknown): asserts value is State {
   if (!value || typeof value !== "object" || !("posts" in value) || !value.posts || typeof value.posts !== "object") throw new Error("Catalogue invalide");
