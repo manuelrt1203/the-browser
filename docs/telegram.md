@@ -63,3 +63,41 @@ L’import ne remplace pas une publication plus récente déjà reçue par webho
 La Bot API ne transmet pas les suppressions de messages et ne permet pas de relire l’historique du canal. Les suppressions nécessitent donc une gestion distincte ; l’import couvre l’historique fourni. Les commandes de conversation et réponses aux utilisateurs dans Telegram ne sont pas implémentées ici. Les liens « Où regarder » restent les offres légales TMDB ; aucun média n’est téléchargé.
 
 `npm test` vérifie le parsing, le stockage local, le contrat REST Redis, les erreurs et le refus du disque éphémère sur Vercel. Les tests Redis utilisent une simulation HTTP : ils ne remplacent pas le test de la base réelle et de Lua en production. Vérifier aussi `npm run lint`, `npx --no-install tsc --noEmit` et `npm run build`. La compilation nécessite l’accès à Google Fonts.
+
+## Reconnaissance et audit, version 2
+
+L’import et le webhook utilisent maintenant le même moteur (`telegram-resolution.ts`). Ils lisent séparément **la légende et `file_name`**, recoupent les indices de titre, de type et d’année, puis vérifient la fiche TMDB. La saison et l’épisode sont conservés seulement lorsque l’épisode existe dans TMDB. Le site compte les couples saison/épisode uniques identifiés ; il ne prétend pas que les vidéos ont été vérifiées ou sont lisibles sur le site.
+
+Les anciennes associations erronées sont retirées de la sélection et bloquées pour les messages Redis non réanalysés : A Different World/60 Minutes, Let It Shine/Superman contre l’Élite, Raging Fire/Sooryavanshi et Kill Zone/La Mariée aux cheveux blancs. Les confusions de version Moana (2026)/Vaiana (2016) et Dragon Ball Super/film Battle of Gods sont également retirées. Les remplaçants sont recherchés et vérifiés, sans nouvel ID deviné.
+
+Après déploiement et mise à jour du dépôt local, commencer par une simulation :
+
+```sh
+node --env-file=.env.production.local --experimental-strip-types scripts/import-telegram.mjs "/chemin/result.json" 4339801492 --dry-run --minimum-coverage 99
+```
+
+Le fichier `.telegram-import-report.json` contient les messages à examiner, les motifs et les candidats éventuels. Un code de sortie 1 signifie que le seuil n’est pas atteint ou qu’une opération a échoué. Aucun message Redis n’est modifié avec `--dry-run`. Les erreurs TMDB (authentification, réseau ou limitation) arrêtent la résolution et sont comptées séparément, sans convertir une panne en « titre introuvable ».
+
+Pour appliquer les correspondances vérifiées et conserver les cas ambigus en attente :
+
+```sh
+node --env-file=.env.production.local --experimental-strip-types scripts/import-telegram.mjs "/chemin/result.json" 4339801492
+```
+
+Le nouvel import réanalyse les anciens enregistrements au lieu de les ignorer. Il ne remplace jamais un message dont la date de modification est plus récente, ni un événement différent arrivé dans la même seconde avec un numéro Telegram plus récent. Le numéro de livraison existant est conservé lors d’une réanalyse du même contenu. L’import invalide ensuite le cache via `/api/telegram/revalidate`, protégé par le même secret ; si cette étape échoue, il le signale sans masquer les données déjà sauvegardées.
+
+Pour les cas ambigus, un fichier de corrections **validées par une personne** peut associer un ID de message de l’export à son lien TMDB exact :
+
+```json
+{
+  "2": "https://www.themoviedb.org/tv/94997"
+}
+```
+
+Passer ce fichier avec `--overrides corrections.json` lors de la simulation puis de l’import. Le détail TMDB est toujours demandé avant publication. Une correction manuelle identifie le titre ; elle ne certifie pas le contenu de la vidéo et n’ajoute pas automatiquement un numéro d’épisode.
+
+### Mesurer l’objectif de 99 %
+
+`mediaCoveragePercent` est le pourcentage de publications vidéo reconnues sans cas en attente. Ce n’est **pas** un taux d’exactitude. `precisionPercent` reste `null` tant qu’aucune vérité terrain indépendante n’a été validée. Les tests de régression couvrent les graphies de l’export, les remakes, les contradictions, l’import, les doublons et les réanalyses ; leur réussite ne démontre pas 99 % d’exactitude sur le catalogue réel.
+
+L’option `--offline` produit les candidats de l’export sans accès TMDB, sans écriture Redis et sans prétendre valider les œuvres. Les rapports contiennent des métadonnées du canal ; ils sont ignorés par Git et doivent être conservés localement.

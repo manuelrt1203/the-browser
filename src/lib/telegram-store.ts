@@ -7,7 +7,10 @@ export type ChannelPost = {
   version: number;
   updateId: number;
   text: string;
-  titles: { kind: "film" | "serie"; id: number }[];
+  titles: { kind: "film" | "serie"; id: number; expectedTitle?: string; year?: number; season?: number; episode?: number }[];
+  resolutionVersion?: number;
+  fileName?: string;
+  review?: { input: string; reason: string; candidates?: { kind: "film" | "serie"; id: number; title: string; year?: number }[] }[];
   pending: string[];
 };
 type State = { posts: Record<string, ChannelPost> };
@@ -60,14 +63,25 @@ function redisKey() {
 
 // Redis exécute cette comparaison et l’écriture en une seule opération atomique,
 // même lorsque plusieurs fonctions Vercel reçoivent des événements simultanés.
+// Garder le JSON original : cjson.encode transforme certains tableaux vides en
+// objets Lua, ce qui corromprait titles/pending/review pendant une migration.
 const SAVE_POST_SCRIPT = `
 local old = redis.call('HGET', KEYS[1], ARGV[1])
 local incoming = cjson.decode(ARGV[2])
 if old then
   local current = cjson.decode(old)
+  local incomingRevision = incoming.resolutionVersion or 0
+  local currentRevision = current.resolutionVersion or 0
+  local upgrade = (incomingRevision > currentRevision or (ARGV[3] == '1' and incomingRevision >= currentRevision)) and current.text == incoming.text
+  if current.fileName and current.fileName ~= incoming.fileName then upgrade = false end
   if current.version > incoming.version or
-    (current.version == incoming.version and current.updateId >= incoming.updateId) then
+    (current.version == incoming.version and current.updateId >= incoming.updateId and not upgrade) then
     return 0
+  end
+  if current.version == incoming.version and upgrade then
+    local retainedUpdate = math.max(current.updateId, incoming.updateId)
+    ARGV[2] = string.gsub(ARGV[2], '"updateId":%-?%d+', '"updateId":' .. tostring(retainedUpdate), 1)
+    if old == ARGV[2] then return 0 end
   end
 end
 redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
@@ -79,8 +93,15 @@ function validateState(value: unknown): asserts value is State {
   for (const post of Object.values(value.posts)) {
     if (!post || !Number.isSafeInteger(post.messageId) || !Number.isSafeInteger(post.version) || !Number.isSafeInteger(post.updateId) ||
       typeof post.text !== "string" || !Array.isArray(post.titles) || !Array.isArray(post.pending) ||
+      (post.resolutionVersion !== undefined && (!Number.isSafeInteger(post.resolutionVersion) || post.resolutionVersion < 0)) ||
+      (post.fileName !== undefined && typeof post.fileName !== "string") ||
+      (post.review !== undefined && (!Array.isArray(post.review) || !post.review.every((item: { input?: unknown; reason?: unknown }) => item && typeof item.input === "string" && typeof item.reason === "string"))) ||
       !post.pending.every((line: unknown) => typeof line === "string") ||
-      !post.titles.every((title: { kind?: unknown; id?: number }) => title && (title.kind === "film" || title.kind === "serie") && Number.isSafeInteger(title.id) && title.id! > 0)) {
+      !post.titles.every((title: { kind?: unknown; id?: number; expectedTitle?: unknown; year?: number; season?: number; episode?: number }) => title && (title.kind === "film" || title.kind === "serie") && Number.isSafeInteger(title.id) && title.id! > 0 &&
+        (title.expectedTitle === undefined || typeof title.expectedTitle === "string") &&
+        (title.year === undefined || (Number.isInteger(title.year) && title.year >= 1800 && title.year <= 2200)) &&
+        (title.season === undefined || (Number.isInteger(title.season) && title.season >= 0)) &&
+        (title.episode === undefined || (Number.isInteger(title.episode) && title.episode > 0)))) {
       throw new Error("Publication stockée invalide");
     }
   }
@@ -110,11 +131,11 @@ export async function readChannelState(file?: string): Promise<State> {
   }
 }
 /** Redis partagé sur Vercel ; fichier atomique pour le développement avec une seule instance. */
-export async function saveChannelPost(channel: string, post: ChannelPost, file?: string) {
+export async function saveChannelPost(channel: string, post: ChannelPost, file?: string, options: { reanalyse?: boolean } = {}) {
   validateState({ posts: { post } });
   if (!file && redisConfiguration()) {
     if (channel !== process.env.TELEGRAM_CHANNEL_ID) throw new Error("Canal non autorisé");
-    const result = await redisCommand(["EVAL", SAVE_POST_SCRIPT, 1, redisKey(), `${channel}:${post.messageId}`, JSON.stringify(post)]);
+    const result = await redisCommand(["EVAL", SAVE_POST_SCRIPT, 1, redisKey(), `${channel}:${post.messageId}`, JSON.stringify(post), options.reanalyse ? "1" : "0"]);
     if (result !== 0 && result !== 1) throw new Error("Réponse Redis invalide");
     return result === 1;
   }
@@ -125,9 +146,15 @@ export async function saveChannelPost(channel: string, post: ChannelPost, file?:
     const state = await readChannelState(targetFile);
     const key = `${channel}:${post.messageId}`;
     const existing = state.posts[key];
+    const upgrade = existing && ((post.resolutionVersion ?? 0) > (existing.resolutionVersion ?? 0) ||
+      (options.reanalyse && (post.resolutionVersion ?? 0) >= (existing.resolutionVersion ?? 0))) &&
+      existing.text === post.text && (!existing.fileName || existing.fileName === post.fileName);
     if (existing && (existing.version > post.version ||
-      (existing.version === post.version && existing.updateId >= post.updateId))) return false;
-    state.posts[key] = post;
+      (existing.version === post.version && existing.updateId >= post.updateId && !upgrade))) return false;
+    state.posts[key] = existing && existing.version === post.version && upgrade
+      ? { ...post, updateId: Math.max(existing.updateId, post.updateId) }
+      : post;
+    if (JSON.stringify(state.posts[key]) === JSON.stringify(existing)) return false;
     await mkdir(dirname(targetFile), { recursive: true });
     const temporary = `${targetFile}.${randomUUID()}.tmp`;
     await writeFile(temporary, JSON.stringify(state), { mode: 0o600 });

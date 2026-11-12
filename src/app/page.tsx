@@ -1,9 +1,11 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { Catalogue } from "@/components/Catalogue";
 import type { Title } from "@/data/catalogue";
 import { getCatalogue, hasTmdbToken } from "@/lib/tmdb";
 
 async function CatalogueSection() {
+  await connection();
   if (!hasTmdbToken()) {
     return (
       <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-6 text-amber-100">

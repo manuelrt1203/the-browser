@@ -38,3 +38,34 @@ test('reconnaît les légendes et fichiers de l’export sans confondre les suit
   assert.deepEqual(matchKnownTitle('SpiderMan2.mp4', known), {kind:'film',id:558});
   assert.equal(matchKnownTitle('Film inconnu', known), null);
 });
+
+test('réanalyse de l’historique sans écraser une modification plus récente', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'telegram-reanalyse-'));
+  const file = join(directory,'catalogue.json');
+  const legacy={messageId:1,version:100,updateId:20,text:'Let It Shine',titles:[{kind:'film',id:103269}],pending:[]};
+  try {
+    await saveChannelPost('-1001',legacy,file);
+    assert.equal(await saveChannelPost('-1001',{...legacy,updateId:-1,resolutionVersion:2,titles:[],pending:['Let It Shine']},file),true);
+    let saved=(await readChannelState(file)).posts['-1001:1'];
+    assert.equal(saved.updateId,20);assert.equal(saved.resolutionVersion,2);assert.deepEqual(saved.titles,[]);
+    assert.equal(await saveChannelPost('-1001',{...legacy,updateId:-1,resolutionVersion:2},file),false);
+    assert.equal(await saveChannelPost('-1001',{...legacy,version:99,resolutionVersion:3},file),false);
+    assert.equal(await saveChannelPost('-1001',{...legacy,text:'Autre texte',updateId:-1,resolutionVersion:3},file),false);
+    saved=(await readChannelState(file)).posts['-1001:1'];assert.equal(saved.text,'Let It Shine');
+  } finally {await rm(directory,{recursive:true,force:true});}
+});
+
+test('un réimport explicite peut corriger une analyse de même version, sans revenir sur un événement plus récent', async () => {
+  const directory=await mkdtemp(join(tmpdir(),'telegram-reimport-'));const file=join(directory,'data.json');
+  const post={messageId:1,version:100,updateId:20,resolutionVersion:2,text:'Titre',fileName:'Titre.mp4',titles:[],pending:['Titre']};
+  try {
+    await saveChannelPost('-1001',post,file);
+    const corrected={...post,updateId:-1,titles:[{kind:'film',id:1}],pending:[]};
+    assert.equal(await saveChannelPost('-1001',corrected,file,{reanalyse:true}),true);
+    assert.equal((await readChannelState(file)).posts['-1001:1'].updateId,20);
+    assert.equal(await saveChannelPost('-1001',corrected,file,{reanalyse:true}),false);
+    assert.equal(await saveChannelPost('-1001',{...corrected,version:99},file,{reanalyse:true}),false);
+    assert.equal(await saveChannelPost('-1001',{...corrected,fileName:'Autre.mp4'},file,{reanalyse:true}),false);
+    assert.equal(await saveChannelPost('-1001',{...corrected,fileName:undefined},file,{reanalyse:true}),false);
+  } finally {await rm(directory,{recursive:true,force:true});}
+});

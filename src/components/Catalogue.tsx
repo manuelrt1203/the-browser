@@ -169,6 +169,11 @@ export function Catalogue({ items }: { items: Title[] }) {
                     {item.year ? ` · ${item.year}` : ""}
                     {item.genres.length > 0 ? ` · ${item.genres.slice(0, 3).join(", ")}` : ""}
                   </p>
+                  {item.episodes && item.episodes.length > 0 && (
+                    <p className="mt-1 text-xs text-sky-300">
+                      {item.episodes.length} épisode{item.episodes.length > 1 ? "s" : ""} identifié{item.episodes.length > 1 ? "s" : ""}
+                    </p>
+                  )}
                   <p className="mt-2 line-clamp-2 text-xs text-white/70">
                     {item.synopsis}
                   </p>

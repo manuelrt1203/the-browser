@@ -1,9 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { revalidateTag } from "next/cache";
-import { hasCatalogueStorage, cleanTelegramTitle, matchKnownTitle, parseChannelText, readChannelState, saveChannelPost } from "@/lib/telegram-store";
+import { hasCatalogueStorage, readChannelState, saveChannelPost } from "@/lib/telegram-store";
 
-import { requestedTitles } from "@/data/selection";
-import { resolveTelegramTitle } from "@/lib/tmdb";
+import { RESOLUTION_VERSION, resolvePublication } from "@/lib/telegram-resolution";
 
 
 export async function POST(request: Request) {
@@ -33,21 +32,21 @@ export async function POST(request: Request) {
   const text = post.text ?? post.caption ?? post.document?.file_name ?? post.video?.file_name ?? "";
   if (typeof text !== "string") return new Response(null, { status: 400 });
   try {
-    const parsed = parseChannelText(text);
-    // Les légendes libres ne sont jamais associées au premier résultat au hasard.
-    const unresolved: string[] = [];
-    for (const line of parsed.pending) {
-      const title = matchKnownTitle(line, requestedTitles) ?? await resolveTelegramTitle(cleanTelegramTitle(line));
-      if (title) parsed.titles.push(title);
-      else unresolved.push(line);
-    }
-    parsed.pending = unresolved;
+    const fileName = post.document?.file_name ?? post.video?.file_name;
+    const entities = post.entities ?? post.caption_entities ?? [];
+    if (fileName !== undefined && typeof fileName !== "string") return new Response(null, { status: 400 });
+    const links = Array.isArray(entities) ? entities.filter((e) => e?.type === "text_link" && typeof e.url === "string").map((e) => e.url) : [];
+    const parsed = await resolvePublication({ text, fileName, links });
     const changed = await saveChannelPost(channel, {
       messageId: post.message_id,
       version: post.edit_date ?? post.date,
       updateId: update.update_id,
       text,
-      ...parsed,
+      ...(fileName ? { fileName } : {}),
+      resolutionVersion: RESOLUTION_VERSION,
+      titles: parsed.titles,
+      pending: parsed.pending,
+      review: parsed.review,
     });
     // Invalider aussi sur les retries : une interruption après écriture ne doit pas laisser le cache périmé.
     revalidateTag("catalogue", { expire: 0 });
@@ -67,6 +66,12 @@ export async function GET(request: Request) {
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return new Response(null, { status: 401 });
   try {
     const state = await readChannelState();
-    return Response.json({ ok: true, posts: Object.keys(state.posts).length }, { headers: { "Cache-Control": "no-store" } });
+    const posts = Object.values(state.posts);
+    return Response.json({ ok: true, posts: posts.length,
+      resolvedPosts: posts.filter((p) => p.titles.length > 0).length,
+      pendingPosts: posts.filter((p) => p.pending.length > 0).length,
+      legacyPosts: posts.filter((p) => (p.resolutionVersion ?? 0) < RESOLUTION_VERSION).length,
+      uniqueTitles: new Set(posts.flatMap((p) => p.titles.map((t) => `${t.kind}:${t.id}`))).size,
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ ok: false }, { status: 503 }); }
 }

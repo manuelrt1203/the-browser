@@ -34,6 +34,8 @@ test('Vercel utilise le contrat Redis REST et une écriture atomique EVAL', () =
   assert.equal(command[0], 'EVAL');
   assert.match(command[1], /redis.call\('HGET'/);
   assert.match(command[1], /redis.call\('HSET'/);
+  assert.doesNotMatch(command[1], /cjson\.encode/, 'les tableaux JSON vides doivent rester des tableaux pendant la réanalyse');
+  assert.match(command[1], /string\.gsub/);
   assert.equal(command[2], 1);
   assert.equal(command[3], 'the-browser:telegram:-100123');
   assert.equal(command[4], '-100123:1');

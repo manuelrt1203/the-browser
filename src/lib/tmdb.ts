@@ -1,6 +1,8 @@
 import { cacheLife, cacheTag } from "next/cache";
 import type { Kind, Title } from "@/data/catalogue";
-import { selection } from "@/data/selection";
+import { requestedTitles, revokedLegacyReferences } from "@/data/selection";
+import { normalizeTitle } from "./telegram-resolution.ts";
+import type { Reference } from "./telegram-resolution.ts";
 
 import { hasCatalogueStorage, readChannelState } from "@/lib/telegram-store";
 
@@ -11,6 +13,8 @@ type TmdbItem = {
   id: number;
   title?: string;
   name?: string;
+  original_title?: string;
+  original_name?: string;
   release_date?: string;
   first_air_date?: string;
   overview?: string;
@@ -40,6 +44,7 @@ async function tmdb<T>(path: string, language = "fr-FR"): Promise<T> {
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
+    signal: AbortSignal.timeout(8000),
   });
   if (!response.ok) throw new TmdbError(response.status, path);
   return (await response.json()) as T;
@@ -65,9 +70,19 @@ function toTitle(item: TmdbItem, kind: Kind): Title | null {
   };
 }
 
-async function fetchTitle(kind: Kind, id: number): Promise<Title | null> {
+async function fetchTitle(ref: Reference): Promise<Title | null> {
+  const { kind, id } = ref;
   const path = kind === "film" ? "movie" : "tv";
   let item = await tmdb<TmdbItem>(`/${path}/${id}`);
+
+  if (item.id !== id) return null;
+  const expected = requestedTitles.find((t) => t.kind === kind && t.id === id);
+  const names = [ref.expectedTitle, expected?.title, ...(expected?.aliases ?? [])].filter((name): name is string => Boolean(name));
+  const actual = [item.title, item.name, item.original_title, item.original_name].filter((name): name is string => Boolean(name));
+  const date = kind === "film" ? item.release_date : item.first_air_date;
+  const year = ref.year ?? expected?.year;
+  if ((names.length && !names.some((name) => actual.some((value) => normalizeTitle(value) === normalizeTitle(name)))) ||
+    (year && Number(date?.slice(0, 4)) !== year)) return null;
 
   // Synopsis absent en français : on prend la version anglaise plutôt que rien.
   if (!item.overview?.trim()) {
@@ -86,46 +101,40 @@ export async function getCatalogue(): Promise<Title[]> {
   const channelPosts = hasCatalogueStorage()
     ? Object.values((await readChannelState()).posts)
     : [];
-  const references = [...selection, ...channelPosts.flatMap((post) => post.titles)];
+  const selection: Reference[] = requestedTitles.flatMap(({ kind, id, year }) => id === undefined ? [] : [{ kind, id, year }]);
+  // Les mauvais IDs restent parfois dans Redis après correction du code : exclure
+  // ces anciennes associations jusqu’à la réanalyse, sans supprimer les messages.
+  const references = [...selection, ...channelPosts.flatMap((post) => post.titles.filter((ref) =>
+    (post.resolutionVersion ?? 0) >= 2 || !revokedLegacyReferences.has(`${ref.kind}:${ref.id}`),
+  ))];
   const unique = [...new Map(references.map((ref) => [`${ref.kind}:${ref.id}`, ref])).values()];
 
-  const results = await Promise.allSettled(
-    unique.map(({ kind, id }) => fetchTitle(kind, id)),
-  );
+  const results: PromiseSettledResult<Title | null>[] = new Array(unique.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(4, unique.length) }, async () => {
+    while (next < unique.length) {
+      const index = next++;
+      try { results[index] = { status: "fulfilled", value: await fetchTitle(unique[index]) }; }
+      catch (reason) { results[index] = { status: "rejected", reason }; }
+    }
+  }));
 
   const titles: Title[] = [];
   for (const result of results) {
     if (result.status === "fulfilled") {
-      if (result.value) titles.push(result.value);
+      if (result.value) {
+        const title = result.value;
+        const episodes = channelPosts.flatMap((post) => post.titles)
+          .filter((ref) => `${ref.kind}-${ref.id}` === title.id && ref.season !== undefined && ref.episode !== undefined)
+          .map((ref) => ({ season: ref.season!, episode: ref.episode! }));
+        if (episodes.length) title.episodes = [...new Map(episodes.map((item) => [`${item.season}:${item.episode}`, item])).values()]
+          .sort((a, b) => a.season - b.season || a.episode - b.episode);
+        titles.push(title);
+      }
     } else if (!(result.reason instanceof TmdbError && result.reason.status === 404)) {
       // Une erreur autre qu'un identifiant inconnu : on ne met pas un catalogue incomplet en cache.
       throw result.reason;
     }
   }
   return titles;
-}
-
-/** Résolution prudente : titre exact unique, sinon conserver la ligne à identifier. */
-export async function resolveTelegramTitle(line: string): Promise<{ kind: Kind; id: number } | null> {
-  const query = line.replace(/^\s*[-•#🎥]+\s*/u, "").replace(/\\$/, "").trim();
-  if (!query || query.length > 180 || /https?:\/\//i.test(query)) return null;
-  const token = process.env.TMDB_READ_TOKEN;
-  if (!token) return null;
-  const url = new URL(`${API}/search/multi`);
-  url.searchParams.set("query", query);
-  url.searchParams.set("language", "fr-FR");
-  url.searchParams.set("include_adult", "false");
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) throw new Error("Recherche TMDB indisponible");
-  const data = await response.json() as { results: (TmdbItem & { media_type: string; original_title?: string; original_name?: string })[]; total_pages: number };
-  const normalize = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-  const matches = data.results.filter((item) =>
-    ["movie", "tv"].includes(item.media_type) &&
-    [item.title, item.name, item.original_title, item.original_name].some((name) => name && normalize(name) === normalize(query)),
-  );
-  if (data.total_pages > 1 || matches.length !== 1) return null;
-  return { kind: matches[0].media_type === "movie" ? "film" : "serie", id: matches[0].id };
 }

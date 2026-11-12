@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Le modèle de variables, sans secret, doit être versionné
 !.env.example
+
+# Local catalogue review reports
+/.telegram-import-report*.json
