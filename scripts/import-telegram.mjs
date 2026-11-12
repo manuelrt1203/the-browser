@@ -57,7 +57,7 @@ await Promise.all(Array.from({length: Math.min(3,messages.length)}, async () => 
       }
       const result = await resolvePublication(override !== undefined
         ? { text: override }
-        : { text: caption, fileName, links },resolve);
+        : { text: caption, fileName, links, channelId, messageId: message.id },resolve);
       if (media && result.titles.length) report.resolvedMediaPosts++;
       if (media && result.titles.length && !result.review.length) report.fullyResolvedMediaPosts++;
       for (const title of result.titles) unique.add(`${title.kind}:${title.id}`);

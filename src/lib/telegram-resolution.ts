@@ -1,7 +1,8 @@
 import { requestedTitles } from "../data/selection.ts";
+import { verifiedEpisodeSources } from "../data/telegram-corrections.ts";
 import type { Kind } from "../data/catalogue.ts";
 
-export const RESOLUTION_VERSION = 4;
+export const RESOLUTION_VERSION = 5;
 export type Reference = { kind: Kind; id: number; expectedTitle?: string; year?: number; season?: number; episode?: number };
 export type Candidate = { query: string; kind?: Kind; year?: number; season?: number; episode?: number };
 export type Pending = { input: string; reason: string; candidates?: { kind: Kind; id: number; title: string; year?: number }[] };
@@ -129,6 +130,29 @@ export function createResolver() {
       }
       // Un ancien ID ne peut pas être utilisé s’il ne valide plus le titre et l’année.
     }
+    // Un casting confirmé par le propriétaire réduit les homonymes sans les classer
+    // par popularité. La filmographie et le casting du film sont tous deux contrôlés.
+    const context = requestedTitles.find((t) => (!candidate.kind || candidate.kind === t.kind) &&
+      normalizeTitle(t.title.replace(/\s*\(\d{4}\)$/, "")) === normalizeTitle(candidate.query));
+    const cast = context?.cast ?? [];
+    if (cast.length && context?.id === undefined && candidate.kind !== "serie") {
+      let pool: Item[] | undefined;
+      for (const name of cast) {
+        const people = await tmdbRequest<{ results: { id: number; name: string }[]; total_pages: number }>("/search/person", { query: name, language: "en-US" });
+        const exact = people?.results?.filter((p) => typeof p.name === "string" && Number.isSafeInteger(p.id) && normalizeTitle(p.name) === normalizeTitle(name)) ?? [];
+        if (people?.total_pages !== 1 || exact.length !== 1) return { reason: "acteur-ambigu" };
+        const credits = await tmdbRequest<{ cast: Item[] }>(`/person/${exact[0].id}/movie_credits`, { language: "en-US" });
+        if (!credits || !Array.isArray(credits.cast)) throw new TmdbUnavailable("Filmographie TMDB invalide");
+        pool = pool ? pool.filter((item) => credits.cast.some((credit) => credit.id === item.id)) : credits.cast;
+      }
+      const matches = [...new Map((pool ?? []).filter((item) => matchesCandidate(item, "film", candidate)).map((item) => [item.id, item])).values()];
+      if (matches.length !== 1) return { reason: matches.length ? "ambigu" : "casting-sans-correspondance" };
+      const detail = await tmdbRequest<Item>(`/movie/${matches[0].id}`, { language: "en-US" });
+      const credits = await tmdbRequest<{ cast: { name: string }[] }>(`/movie/${matches[0].id}/credits`);
+      if (!detail || detail.id !== matches[0].id || !matchesCandidate(detail, "film", candidate) ||
+        !cast.every((name) => credits?.cast?.some((actor) => normalizeTitle(actor.name) === normalizeTitle(name)))) return { reason: "casting-incoherent" };
+      return { title: reference(detail, "film") };
+    }
     const endpoint = candidate.kind === "film" ? "/search/movie" : candidate.kind === "serie" ? "/search/tv" : "/search/multi";
     for (const language of ["fr-FR", "en-US"]) {
       const items: Item[] = [];
@@ -182,7 +206,7 @@ export function createResolver() {
 }
 
 export async function resolvePublication(
-  input: { text?: string; fileName?: string; links?: string[] },
+  input: { text?: string; fileName?: string; links?: string[]; channelId?: string; messageId?: number },
   resolve = createResolver(),
 ): Promise<Resolution> {
   const result: Resolution = { titles: [], pending: [], review: [], ignored: [] };
@@ -224,9 +248,17 @@ export async function resolvePublication(
       result.review.push({ input: input.fileName, reason: "sources-contradictoires" });
       result.titles = [];
     } else if (input.fileName && (seasons.size > 1 || episodes.size > 1)) {
+      const confirmed = verifiedEpisodeSources.some((source) => source.channelId === input.channelId && source.messageId === input.messageId && source.text === input.text && source.fileName === input.fileName);
+      const caption = parseCandidate(input.text ?? "");
+      const verifiedCaption = confirmed && caption?.season !== undefined && caption.episode !== undefined
+        ? result.titles.filter((ref) => ref.season === caption.season && ref.episode === caption.episode)
+        : [];
+      if (verifiedCaption.length) result.titles = verifiedCaption;
+      else {
       result.review.push({ input: input.fileName, reason: "episodes-contradictoires" });
       // Le titre est confirmé des deux côtés, mais aucun numéro n’est certifié.
       result.titles = result.titles.map(({ kind, id, expectedTitle, year }) => ({ kind, id, expectedTitle, year }));
+      }
     }
   }
   if (input.fileName && /\.(?:mp4|mkv|avi|mov|mpg|mpeg|webm|m4v)$/i.test(input.fileName) && !result.titles.length && !result.review.length) {

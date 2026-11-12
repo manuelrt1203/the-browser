@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const entities = post.entities ?? post.caption_entities ?? [];
     if (fileName !== undefined && typeof fileName !== "string") return new Response(null, { status: 400 });
     const links = Array.isArray(entities) ? entities.filter((e) => e?.type === "text_link" && typeof e.url === "string").map((e) => e.url) : [];
-    const parsed = await resolvePublication({ text, fileName, links });
+    const parsed = await resolvePublication({ text, fileName, links, channelId: channel, messageId: post.message_id });
     const changed = await saveChannelPost(channel, {
       messageId: post.message_id,
       version: post.edit_date ?? post.date,

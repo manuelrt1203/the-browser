@@ -131,3 +131,9 @@ Pour Teen Wolf, si texte et fichier valident la même série mais divergent sur 
 Brothers (2009) est identifié par l’indice explicite Tobey Maguire (écrit McGuire dans la légende) : le casting de l’ID candidat est vérifié via TMDB avant utilisation du raccourci. Swapped est désambiguïsé par le titre français explicite « Aventures croisées ». Les IDs issus du rapport sont toujours vérifiés sur leurs détails.
 
 Le rapport fourni contient exactement 28 publications des Carnets de l’apothicaire avec numérotation non confirmée (24 de saison 2, quatre de saison 3). Aucune renumérotation automatique n’est appliquée. Mutiny (2026), The Runner (2026) et Hope demandent encore des précisions d’identification ; aucun homonyme n’est choisi au classement de popularité.
+
+### Confirmations du propriétaire (version 5)
+
+Le propriétaire a précisé Jason Statham pour Mutiny, Gal Gadot pour The Runner et Michael Fassbender pour Hope. La résolution recherche la personne par son nom exact, croise sa filmographie avec le titre et l’année, puis revérifie le détail et le casting du film retenu. Une filmographie ambiguë ou un casting incohérent restent en attente ; aucun ID de ces trois films n’est supposé.
+
+Les textes Telegram des six messages Teen Wolf ont été vérifiés par le propriétaire en regardant les vidéos. `src/data/telegram-corrections.ts` conserve les six identifiants et les textes/noms de fichiers exacts. La priorité au texte ne s’applique que si le canal, l’identifiant et les deux sources correspondent encore à cette vérification, et si l’épisode du texte a pu être validé par TMDB. Un autre message, une modification de l’une des sources ou un désaccord sur l’œuvre revient au traitement prudent normal.

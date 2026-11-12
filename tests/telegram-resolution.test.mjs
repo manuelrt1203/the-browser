@@ -218,3 +218,28 @@ test('une saison annoncée sans titre est ignorée et la variante française Har
  assert.equal(parseCandidate('La saison 1 complète de Superman et Lois👍😊').query,'Superman et Loïs');
  assert.equal(parseCandidate('🍿 Harry Potter et les Reliques de la mort - 2ème partie (2011)').query,'Harry Potter et les Reliques de la Mort — Partie 2');
 });
+
+for(const [query,actor,id] of [['Mutiny','Jason Statham',1288445],['The Runner','Gal Gadot',1386315],['Hope','Michael Fassbender',123456]])test(`casting confirmé : ${query}`,()=>mockTmdb(async()=>{
+ const result=await createResolver()({query,kind:'film',year:2026});
+ assert.equal(result.title.id,id);
+},url=>{
+ if(url.pathname==='/3/search/person'){assert.equal(url.searchParams.get('query'),actor);return Response.json({results:[{id:99,name:actor}],total_pages:1});}
+ if(url.pathname.endsWith('/movie_credits'))return Response.json({cast:[{id,title:query,original_title:query,release_date:'2026-01-01'},{id:id+1,title:'Autre film',release_date:'2026-01-01'}]});
+ if(url.pathname.endsWith('/credits'))return Response.json({cast:[{name:actor}]});
+ return Response.json({id,title:query,original_title:query,release_date:'2026-01-01'});
+}));
+
+test('la correction Teen Wolf est limitée aux sources effectivement vérifiées',async()=>{
+ const {verifiedEpisodeSources}=await import('../src/data/telegram-corrections.ts');
+ const resolve=async(c)=>({title:{kind:'serie',id:34524,expectedTitle:'Teen Wolf',year:2011,season:c.season,episode:c.episode}});
+ for(const source of verifiedEpisodeSources){
+  const result=await resolvePublication(source,resolve);
+  assert.equal(result.titles.length,1);
+  assert.equal(result.titles[0].episode,parseCandidate(source.text).episode);
+  assert.equal(result.titles[0].season,parseCandidate(source.text).season);
+  assert.deepEqual(result.review,[]);
+  const other=await resolvePublication({...source,messageId:9999},resolve);
+  assert.equal(other.titles[0].episode,undefined);
+  assert.ok(other.review.some(i=>i.reason==='episodes-contradictoires'));
+ }
+});

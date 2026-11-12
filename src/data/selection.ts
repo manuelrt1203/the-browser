@@ -36,7 +36,7 @@ export const requestedTitles: RequestedTitle[] = [
   { kind: "film", title: "Harry Potter et le Prince de sang-mêlé", id: 767, year: 2009, aliases: ["Harry Potter et le Prince de sang-mêlé"] },
   { kind: "film", title: "Harry Potter et les Reliques de la Mort — Partie 1", id: 12444, year: 2010, aliases: ["Harry Potter et les Reliques de la Mort - 1ère partie"] },
   { kind: "film", title: "Harry Potter et les Reliques de la Mort — Partie 2", id: 12445, year: 2011, aliases: ["Harry Potter et les Reliques de la Mort - 2ème partie"] },
-  { kind: "film", title: "Hope" },
+  { kind: "film", title: "Hope", cast: ["Michael Fassbender"] },
   { kind: "serie", title: "House of the Dragon", id: 94997, year: 2022, aliases: ["House of the Dragon"] },
   { kind: "film", title: "Ip Man", id: 14756, year: 2008, aliases: ["Ip Man"] },
   { kind: "film", title: "Ip Man 2", id: 37472, year: 2010, aliases: ["Ip Man 2"] },
@@ -63,7 +63,7 @@ export const requestedTitles: RequestedTitle[] = [
   { kind: "serie", title: "Nouvelle École" },
   { kind: "film", title: "On l’appelait Robin des Bois (2026)" },
   { kind: "film", title: "Nos étoiles contraires", id: 222935, year: 2014, aliases: ["Nos étoiles contraires"] },
-  { kind: "film", title: "The Runner" },
+  { kind: "film", title: "The Runner", cast: ["Gal Gadot"] },
   { kind: "film", title: "Raging Fire", year: 2021 },
   { kind: "serie", title: "Reacher", id: 108978, year: 2022, aliases: ["Reacher"] },
   { kind: "film", title: "Rebel Ridge", id: 646097, year: 2024, aliases: ["Rebel Ridge"] },
@@ -99,7 +99,7 @@ export const requestedTitles: RequestedTitle[] = [
   { kind: "serie", title: "Marvel’s The Punisher", id: 67178, year: 2017, aliases: ["Marvel's The Punisher"] },
   { kind: "film", title: "Kill Zone", year: 2005, aliases: ["SPL : Kill Zone", "SPL", "SPL: Kill Zone"] },
   { kind: "film", title: "Les Maîtres de l’univers" },
-  { kind: "film", title: "Mutiny (2026)" },
+  { kind: "film", title: "Mutiny (2026)", year: 2026, cast: ["Jason Statham"] },
 ];
 
 /** Titres reliés à TMDB, dans l’ordre de la liste demandée. */
