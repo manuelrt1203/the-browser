@@ -121,3 +121,13 @@ Pour un titre déjà répertorié, le détail de l’ID est vérifié en premier
 Le propriétaire a confirmé A Different World **2026** et Lanterns **DC/HBO 2026**. Les IDs issus des candidats de son rapport sont encore contrôlés auprès de TMDB à chaque résolution ; ils ne sont pas considérés comme valides sur leur seule présence dans la sélection.
 
 Le bilan fournit désormais `titleCoveragePercent` (publications vidéo dont le titre est reconnu) séparément de `mediaCoveragePercent` (reconnaissance complète, sans point en attente, y compris les épisodes). Aucun des deux ne constitue une précision validée à 99 %. Les contradictions de numéro d’épisode et les différences entre saisons déclarées et organisation TMDB restent à examiner ; les épisodes ne sont jamais renumérotés automatiquement.
+
+## Rapport version 3 : traitement des derniers cas (version 4)
+
+Les sept conflits Harry Potter provenaient de « Abonne Toi », interprété comme un titre ; cette ligne est désormais ignorée. Les variantes ordinales françaises et les alias de la sélection sont canonisés. Une annonce de saison sans titre n’est pas recherchée comme une œuvre.
+
+Pour Teen Wolf, si texte et fichier valident la même série mais divergent sur l’épisode ou la saison, le titre est conservé **sans aucun numéro certifié**, et le motif `episodes-contradictoires` reste au rapport. Une contradiction sur l’œuvre elle-même continue de bloquer la publication. Cela améliore la couverture des titres sans maquiller la couverture complète des épisodes.
+
+Brothers (2009) est identifié par l’indice explicite Tobey Maguire (écrit McGuire dans la légende) : le casting de l’ID candidat est vérifié via TMDB avant utilisation du raccourci. Swapped est désambiguïsé par le titre français explicite « Aventures croisées ». Les IDs issus du rapport sont toujours vérifiés sur leurs détails.
+
+Le rapport fourni contient exactement 28 publications des Carnets de l’apothicaire avec numérotation non confirmée (24 de saison 2, quatre de saison 3). Aucune renumérotation automatique n’est appliquée. Mutiny (2026), The Runner (2026) et Hope demandent encore des précisions d’identification ; aucun homonyme n’est choisi au classement de popularité.

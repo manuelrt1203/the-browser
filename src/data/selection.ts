@@ -7,6 +7,7 @@ export type RequestedTitle = {
   id?: number;
   year?: number;
   aliases?: string[];
+  cast?: string[];
 };
 
 /** Liste demandée, nettoyée : doublons et épisodes regroupés par série. */
@@ -20,7 +21,7 @@ export const requestedTitles: RequestedTitle[] = [
   { kind: "serie", title: "Avatar : Le Dernier Maître de l’air (2024)", id: 82452, year: 2024, aliases: ["Avatar : Le dernier maître de l'air"] },
   { kind: "serie", title: "Beauty in Black" },
   { kind: "serie", title: "Black Clover", id: 73223, year: 2017, aliases: ["Black Clover"] },
-  { kind: "film", title: "Brothers", year: 2009 },
+  { kind: "film", title: "Brothers", year: 2009, id: 7445, cast: ["Tobey Maguire"] },
   { kind: "serie", title: "Carrie" },
   { kind: "serie", title: "Dragon Ball Super", year: 2015 },
   { kind: "serie", title: "Squid Game", id: 93405, year: 2021, aliases: ["Squid Game"] },
@@ -83,7 +84,7 @@ export const requestedTitles: RequestedTitle[] = [
   { kind: "film", title: "Star Wars, épisode IX : L’Ascension de Skywalker", id: 181812, year: 2019, aliases: ["Star Wars : L'Ascension de Skywalker"] },
   { kind: "serie", title: "Sullivan’s Crossing" },
   { kind: "serie", title: "Superman et Loïs", id: 95057, year: 2021, aliases: ["Superman & Loïs"] },
-  { kind: "film", title: "Swapped" },
+  { kind: "film", title: "Swapped", year: 2026, id: 1007757, aliases: ["Aventures croisées"] },
   { kind: "serie", title: "Teen Wolf", id: 34524, year: 2011, aliases: ["Teen Wolf"] },
   { kind: "serie", title: "Flash (2014)", id: 60735, year: 2014, aliases: ["Flash"] },
   { kind: "film", title: "The Last Sunrise (2026)" },

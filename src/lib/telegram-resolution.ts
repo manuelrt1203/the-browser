@@ -1,14 +1,14 @@
 import { requestedTitles } from "../data/selection.ts";
 import type { Kind } from "../data/catalogue.ts";
 
-export const RESOLUTION_VERSION = 3;
+export const RESOLUTION_VERSION = 4;
 export type Reference = { kind: Kind; id: number; expectedTitle?: string; year?: number; season?: number; episode?: number };
 export type Candidate = { query: string; kind?: Kind; year?: number; season?: number; episode?: number };
 export type Pending = { input: string; reason: string; candidates?: { kind: Kind; id: number; title: string; year?: number }[] };
 export type Resolution = { titles: Reference[]; pending: string[]; review: Pending[]; ignored: string[] };
 
 type Item = { id: number; media_type?: string; title?: string; name?: string; original_title?: string; original_name?: string; release_date?: string; first_air_date?: string };
-export const normalizeTitle = (s: string) => s.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+export const normalizeTitle = (s: string) => s.replace(/(\d+)(?:ème|eme|ère|ere)/gi, "$1e").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 
 // Ces alias corrigent des graphies du corpus ; ils désignent un titre, jamais un ID supposé.
 const aliases: Record<string, string> = {
@@ -42,8 +42,9 @@ export function parseCandidate(input: string): Candidate | null {
   if (/^(?:synopsis\s*[^\p{L}\p{N}]*|[ée]pisodes?\s+\d+(?:\s*(?:et|à|,|-)?\s*\d+)*)$/iu.test(text)) return null;
   const label = text.replace(/^[^\p{L}\p{N}#]+/u, "");
   if (/^(?:(?:langue|taille|qualit[ée]|synopsis|code promo|disponible sur|rappel)\s*:|(?:bon|excellent) visionnage|tout(?:e?s)? nos (?:cha[iî]nes|canaux)|version convertie|cliqu(?:er|ez) sur le lien|accès à différents canaux|découvrez une sélection|l.accès est|ma cha[iî]ne youtube|veuillez|pour (?:faire appara[iî]tre|tout problème)|en cas de problème|mais comme|#film\s*\||(?:19|20)\d{2}\s*[‧·])/i.test(label)) return null;
-  if (/(?:ajoute.*(?:dossier|canal)|abonnez|rejoignez|liens dans le canal|dossier complet)/i.test(text)) return null;
+  if (/(?:ajoute.*(?:dossier|canal)|abonnez|abonne[ -]+(?:toi|vous)|rejoignez|liens dans le canal|dossier complet)/i.test(text)) return null;
   if (!text || /^\d+$/.test(text) || /^(?:index-v\d+-a\d+(?:\.(?:mkv|mp4))?|sticker(?:[ .]webp)?)$/i.test(text) || /https?:\/\//i.test(text)) return null;
+  if (/^la saison \d+ arrive bient[oô]t/iu.test(label)) return null;
   const seasonEpisode = text.match(/\bS(?:aison)?\s*(\d+)\s*[|._ -]*(?:[ÉE]P?(?:ISODE)?)\s*(\d+)/i);
   const season = seasonEpisode?.[1] ?? text.match(/\bS(?:aison)?\s*(\d+)/i)?.[1];
   const episode = seasonEpisode?.[2] ?? text.match(/\b[ÉE]P?(?:ISODE)?\s*[-:]?\s*(\d+)/i)?.[1];
@@ -61,6 +62,7 @@ export function parseCandidate(input: string): Candidate | null {
     .replace(/^\s*film\s*\d+\s*:\s*/i, "")
     .replace(/^[^\p{L}\p{N}]*ACTION[ -]+ZONE[^\p{L}\p{N}]*/iu, "")
     .replace(/^\s*(?:voir|film)\s+/i, "")
+    .replace(/^la saison \d+ compl[eè]te de /i, "")
     .replace(/\b(?:S(?:aison)?\s*\d+\s*[- ]*(?:[ÉE]P?(?:ISODE)?)\s*\d+|S(?:aison)?\s*\d+)\b.*$/i, "")
     .replace(/\b[ÉE]P?(?:ISODE)?\s*[-:]?\s*\d+(?:\s*(?:et|à|,|-)\s*\d+)*\s*/gi, " ")
     .replace(/\b(?:19|20)\d{2}\b/g, " ")
@@ -72,10 +74,11 @@ export function parseCandidate(input: string): Candidate | null {
   if (!text || text.length > 180 || text.split(/\s+/).length > 16 || /^\d+$/.test(text)) return null;
   const key = normalizeTitle(text);
   text = key === "thepunisher" && (season || episode) ? "Marvel’s The Punisher" : aliases[key] ?? text;
-  const known = requestedTitles.filter((t) => normalizeTitle(t.title.replace(/\s*\(\d{4}\)$/, "")) === normalizeTitle(text));
+  const known = requestedTitles.filter((t) => [t.title.replace(/\s*\(\d{4}\)$/, ""), ...(t.aliases ?? [])].some((name) => normalizeTitle(name) === normalizeTitle(text)));
   let kind: Kind | undefined = season || episode ? "serie" : isFilm ? "film" : undefined;
   let inferredYear = year ? Number(year) : undefined;
   if (known.length === 1 && (!kind || known[0].kind === kind)) {
+    text = known[0].title.replace(/\s*\(\d{4}\)$/, "");
     kind ??= known[0].kind;
     inferredYear ??= known[0].year ?? (Number(known[0].title.match(/\((\d{4})\)$/)?.[1]) || undefined);
   }
@@ -119,7 +122,11 @@ export function createResolver() {
       [t.title, ...(t.aliases ?? [])].some((name) => normalizeTitle(name) === normalizeTitle(candidate.query)) && (!candidate.year || t.year === candidate.year));
     if (known.length === 1) {
       const detail = await tmdbRequest<Item>(`/${known[0].kind === "film" ? "movie" : "tv"}/${known[0].id}`);
-      if (detail && detail.id === known[0].id && matchesCandidate(detail, known[0].kind, candidate)) return { title: reference(detail, known[0].kind) };
+      if (detail && detail.id === known[0].id && matchesCandidate(detail, known[0].kind, candidate)) {
+        const requiredCast = known[0].cast ?? [];
+        const credits = requiredCast.length ? await tmdbRequest<{ cast: { name: string }[] }>(`/movie/${detail.id}/credits`) : null;
+        if (!requiredCast.length || requiredCast.every((name) => credits?.cast?.some((actor) => normalizeTitle(actor.name) === normalizeTitle(name)))) return { title: reference(detail, known[0].kind) };
+      }
       // Un ancien ID ne peut pas être utilisé s’il ne valide plus le titre et l’année.
     }
     const endpoint = candidate.kind === "film" ? "/search/movie" : candidate.kind === "serie" ? "/search/tv" : "/search/multi";
@@ -213,9 +220,13 @@ export async function resolvePublication(
     const unique = new Set(result.titles.map((t) => `${t.kind}:${t.id}`));
     const seasons = new Set(result.titles.flatMap((t) => t.season === undefined ? [] : [t.season]));
     const episodes = new Set(result.titles.flatMap((t) => t.episode === undefined ? [] : [t.episode]));
-    if (input.fileName && (unique.size > 1 || seasons.size > 1 || episodes.size > 1)) {
+    if (input.fileName && unique.size > 1) {
       result.review.push({ input: input.fileName, reason: "sources-contradictoires" });
       result.titles = [];
+    } else if (input.fileName && (seasons.size > 1 || episodes.size > 1)) {
+      result.review.push({ input: input.fileName, reason: "episodes-contradictoires" });
+      // Le titre est confirmé des deux côtés, mais aucun numéro n’est certifié.
+      result.titles = result.titles.map(({ kind, id, expectedTitle, year }) => ({ kind, id, expectedTitle, year }));
     }
   }
   if (input.fileName && /\.(?:mp4|mkv|avi|mov|mpg|mpeg|webm|m4v)$/i.test(input.fileName) && !result.titles.length && !result.review.length) {

@@ -8,7 +8,7 @@ const fixtures = [
   ['House of dagon S3E2.mp4','House of the Dragon','serie',2022,3,2],
   ['Reacher.S04e04.Karambits.And.Pieces.Amzn.Web.H264-Byor.mp4','Reacher','serie',2022,4,4],
   ['[ @Films_and_series_Fr ] From Saison 4 Ep 05 VF.mp4','From','serie',2022,4,5],
-  ['Les carnets de l’apothicaire S01EP01.mp4','Les carnets de l’apothicaire','serie',2023,1,1],
+  ['Les carnets de l’apothicaire S01EP01.mp4','Les Carnets de l’apothicaire','serie',2023,1,1],
   ['Miraculous SO7E01.mp4','Miraculous : Les Aventures de Ladybug et Chat Noir','serie',2015,7,1],
   ['Superman And Lois 2021.mp4','Superman et Loïs','serie',2021],
   ['EP 2Squid Game.mp4','Squid Game','serie',2021,undefined,2],
@@ -18,10 +18,10 @@ const fixtures = [
   ['Film Flashpoint 2007 @FilmSerieFeuilleton.mp4','Flashpoint','film',2007],
   ['Let It Shine 2012.mp4','Let It Shine','film',2012],
   ['_@ACT_ZONE@_MAÎTRES_DE_L’UNIVERS_VF.mp4','Les Maîtres de l’univers','film'],
-  ['_🎥ACTION_ZONE🎥MUTINY_VF_2026.mp4','MUTINY','film',2026],
+  ['_🎥ACTION_ZONE🎥MUTINY_VF_2026.mp4','Mutiny','film',2026],
   ['Moana.2026.Multi.Ca.WEBRIP.mp4','Moana','film',2026],
   ['Moana (Live Action)','Moana','film',2026],
-  ['HOPE_Film_Complet_en_Français_SALMAN_DILMAHOMED_360p,_h264.mp4','HOPE','film'],
+  ['HOPE_Film_Complet_en_Français_SALMAN_DILMAHOMED_360p,_h264.mp4','Hope','film'],
   ['Resident Evil 2026 Multi Ca.mp4','Resident Evil','film',2026],
   ['@yahxe~Kill Zone 2005.mp4','Kill Zone','film',2005],
   ['shreeek 3.mpg','Shrek le troisième','film',2007],
@@ -108,7 +108,8 @@ test('les contradictions de titre ou d’épisode vont en révision', async () =
     {text:'House Of Dragon S3E1',fileName:'House of the Dragon Saison 3 Épisode 2.mp4'},
   ]){
     const result=await resolvePublication(input,resolve);
-    assert.equal(result.titles.length,0);assert.ok(result.review.some(x=>x.reason==='sources-contradictoires'));
+    if (input.fileName.startsWith('Reacher')) { assert.equal(result.titles.length,0);assert.ok(result.review.some(x=>x.reason==='sources-contradictoires')); }
+    else { assert.equal(result.titles.length,1);assert.equal(result.titles[0].episode,undefined);assert.ok(result.review.some(x=>x.reason==='episodes-contradictoires')); }
   }
 });
 
@@ -147,7 +148,7 @@ test('les lignes techniques et promotionnelles du rapport sont ignorées sans ig
  assert.equal(parseCandidate('Superman et Lois s1e1').query,'Superman et Loïs');
  assert.equal(parseCandidate('Sonic 3').query,'Sonic 3, le film');
  assert.equal(parseCandidate('Brothers 2009 (Tobey McGuire)👍').query,'Brothers');
- assert.equal(parseCandidate('Le_Crime_du_3ème_Etage_2026_FRENCH.mkv').query,'Le Crime du 3e Etage');
+ assert.equal(parseCandidate('Le_Crime_du_3ème_Etage_2026_FRENCH.mkv').query,'Le Crime du 3e étage');
 });
 
 test('un identifiant connu vérifié contourne les pages sans relâcher la vérification',()=>mockTmdb(async()=>{
@@ -192,3 +193,28 @@ test('un titre anglais dont le titre original est japonais peut être vérifié 
  if(url.pathname.includes('/search/') && url.searchParams.get('language')==='fr-FR')return Response.json({results:[],total_pages:0});
  return Response.json(url.pathname.includes('/search/')?{results:[{id:123,title:'Demon City',original_title:'鬼ゴロシ',release_date:'2025-02-27'}],total_pages:1}:{id:123,title:'Demon City',original_title:'鬼ゴロシ',release_date:'2025-02-27'});
 }));
+
+test('Harry Potter et Abonne Toi ne produisent pas deux œuvres',()=>mockTmdb(async()=>{
+ const result=await resolvePublication({text:'Harry.Potter.1.Film.VF.mp4\n👇 Abonne Toi 👇\n[https://t.me/addlist/test]',fileName:'@kinemavf Harry.Potter.1.Film.VF.mp4'});
+ assert.equal(result.titles.length,1);assert.equal(result.titles[0].id,671);assert.deepEqual(result.review,[]);
+},url=>{
+ assert.equal(url.pathname,'/3/movie/671');return Response.json({id:671,title:'Harry Potter à l’école des sorciers',release_date:'2001-11-16'});
+}));
+
+test('Brothers 2009 vérifie Tobey Maguire avant de retenir son ID',()=>mockTmdb(async()=>{
+ const result=await resolvePublication({text:'Brothers 2009 (Tobey McGuire)👍',fileName:'Brothers.2009.FRENCH.mp4'});
+ assert.equal(result.titles.length,1);assert.equal(result.titles[0].id,7445);assert.deepEqual(result.review,[]);
+},url=>Response.json(url.pathname.endsWith('/credits')?{cast:[{name:'Tobey Maguire'}]}:{id:7445,title:'Brothers',release_date:'2009-12-04'})));
+
+test('Aventures croisées permet de distinguer Swapped du titre Swapped!',()=>mockTmdb(async()=>{
+ const result=await resolvePublication({text:'Swapped (Aventures croisées)',fileName:'Swapped.2026.Multi.WEBRIP.mp4'});
+ assert.equal(result.titles.length,1);assert.equal(result.titles[0].id,1007757);assert.deepEqual(result.review,[]);
+},url=>{
+ assert.equal(url.pathname,'/3/movie/1007757');return Response.json({id:1007757,title:'Aventures croisées',original_title:'Swapped',release_date:'2026-05-01'});
+}));
+
+test('une saison annoncée sans titre est ignorée et la variante française Harry Potter conserve sa fiche',()=>{
+ assert.equal(parseCandidate('La saison 4 arrive bientôt👍'),null);
+ assert.equal(parseCandidate('La saison 1 complète de Superman et Lois👍😊').query,'Superman et Loïs');
+ assert.equal(parseCandidate('🍿 Harry Potter et les Reliques de la mort - 2ème partie (2011)').query,'Harry Potter et les Reliques de la Mort — Partie 2');
+});
