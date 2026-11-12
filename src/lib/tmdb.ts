@@ -1,6 +1,8 @@
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import type { Kind, Title } from "@/data/catalogue";
 import { selection } from "@/data/selection";
+
+import { hasCatalogueStorage, readChannelState } from "@/lib/telegram-store";
 
 const API = "https://api.themoviedb.org/3";
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
@@ -79,9 +81,16 @@ async function fetchTitle(kind: Kind, id: number): Promise<Title | null> {
 export async function getCatalogue(): Promise<Title[]> {
   "use cache";
   cacheLife("hours");
+  cacheTag("catalogue");
+
+  const channelPosts = hasCatalogueStorage()
+    ? Object.values((await readChannelState()).posts)
+    : [];
+  const references = [...selection, ...channelPosts.flatMap((post) => post.titles)];
+  const unique = [...new Map(references.map((ref) => [`${ref.kind}:${ref.id}`, ref])).values()];
 
   const results = await Promise.allSettled(
-    selection.map(({ kind, id }) => fetchTitle(kind, id)),
+    unique.map(({ kind, id }) => fetchTitle(kind, id)),
   );
 
   const titles: Title[] = [];
@@ -94,4 +103,29 @@ export async function getCatalogue(): Promise<Title[]> {
     }
   }
   return titles;
+}
+
+/** Résolution prudente : titre exact unique, sinon conserver la ligne à identifier. */
+export async function resolveTelegramTitle(line: string): Promise<{ kind: Kind; id: number } | null> {
+  const query = line.replace(/^\s*[-•#🎥]+\s*/u, "").replace(/\\$/, "").trim();
+  if (!query || query.length > 180 || /https?:\/\//i.test(query)) return null;
+  const token = process.env.TMDB_READ_TOKEN;
+  if (!token) return null;
+  const url = new URL(`${API}/search/multi`);
+  url.searchParams.set("query", query);
+  url.searchParams.set("language", "fr-FR");
+  url.searchParams.set("include_adult", "false");
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error("Recherche TMDB indisponible");
+  const data = await response.json() as { results: (TmdbItem & { media_type: string; original_title?: string; original_name?: string })[]; total_pages: number };
+  const normalize = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  const matches = data.results.filter((item) =>
+    ["movie", "tv"].includes(item.media_type) &&
+    [item.title, item.name, item.original_title, item.original_name].some((name) => name && normalize(name) === normalize(query)),
+  );
+  if (data.total_pages > 1 || matches.length !== 1) return null;
+  return { kind: matches[0].media_type === "movie" ? "film" : "serie", id: matches[0].id };
 }
