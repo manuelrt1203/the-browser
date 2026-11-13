@@ -243,3 +243,22 @@ test('la correction Teen Wolf est limitée aux sources effectivement vérifiées
   assert.ok(other.review.some(i=>i.reason==='episodes-contradictoires'));
  }
 });
+
+test('la légende bilingue et l’année documentaire identifient La Petite Sirène 2023',()=>mockTmdb(async()=>{
+ const result=await resolvePublication({text:'The Little Mermaid / La Petite Sirène\n2023 ‧ Cinéma de fantasy/Musical ‧ 2h 15m\nSynopsis 📽️📌'});
+ assert.equal(result.titles.length,1);assert.equal(result.titles[0].id,447277);assert.equal(result.titles[0].year,2023);assert.deepEqual(result.review,[]);
+},url=>{
+ const item={id:447277,title:'La Petite Sirène',original_title:'The Little Mermaid',release_date:'2023-05-24',media_type:'movie'};
+ return Response.json(url.pathname.includes('/search/')?{results:[item],total_pages:1}:item);
+}));
+
+test('une traduction ambiguë peut être corroborée par le titre original vérifié, sans créer un nouveau titre',async()=>{
+ const result=await resolvePublication({text:'Un homme en colère\nWrath of Man'},async c=>c.query==='Wrath of Man'
+  ? {title:{kind:'film',id:637649,year:2021,expectedTitle:'Wrath of Man',verifiedNames:['Wrath of Man','Un homme en colère']}}
+  : {reason:'ambigu',candidates:[{kind:'film',id:637649,title:'Un homme en colère',year:2021},{kind:'serie',id:207707,title:'Un homme en colère',year:1997}]});
+ assert.equal(result.titles.length,1);assert.deepEqual(result.review,[]);
+});
+
+test('une annonce de plusieurs épisodes n’en certifie pas un seul par erreur',()=>{
+ assert.equal(parseCandidate("Avatar le dernier maître de l'air S2E1 S2E2 S2E3").episode,undefined);
+});

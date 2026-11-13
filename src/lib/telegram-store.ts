@@ -7,7 +7,7 @@ export type ChannelPost = {
   version: number;
   updateId: number;
   text: string;
-  titles: { kind: "film" | "serie"; id: number; expectedTitle?: string; year?: number; season?: number; episode?: number }[];
+  titles: { kind: "film" | "serie"; id: number; expectedTitle?: string; verifiedNames?: string[]; year?: number; season?: number; episode?: number }[];
   resolutionVersion?: number;
   fileName?: string;
   review?: { input: string; reason: string; candidates?: { kind: "film" | "serie"; id: number; title: string; year?: number }[] }[];
@@ -131,8 +131,9 @@ function validateState(value: unknown): asserts value is State {
       (post.fileName !== undefined && typeof post.fileName !== "string") ||
       (post.review !== undefined && (!Array.isArray(post.review) || !post.review.every((item: { input?: unknown; reason?: unknown }) => item && typeof item.input === "string" && typeof item.reason === "string"))) ||
       !post.pending.every((line: unknown) => typeof line === "string") ||
-      !post.titles.every((title: { kind?: unknown; id?: number; expectedTitle?: unknown; year?: number; season?: number; episode?: number }) => title && (title.kind === "film" || title.kind === "serie") && Number.isSafeInteger(title.id) && title.id! > 0 &&
+      !post.titles.every((title: { kind?: unknown; id?: number; expectedTitle?: unknown; verifiedNames?: unknown; year?: number; season?: number; episode?: number }) => title && (title.kind === "film" || title.kind === "serie") && Number.isSafeInteger(title.id) && title.id! > 0 &&
         (title.expectedTitle === undefined || typeof title.expectedTitle === "string") &&
+        (title.verifiedNames === undefined || (Array.isArray(title.verifiedNames) && title.verifiedNames.every((name: unknown) => typeof name === "string"))) &&
         (title.year === undefined || (Number.isInteger(title.year) && title.year >= 1800 && title.year <= 2200)) &&
         (title.season === undefined || (Number.isInteger(title.season) && title.season >= 0)) &&
         (title.episode === undefined || (Number.isInteger(title.episode) && title.episode > 0)))) {

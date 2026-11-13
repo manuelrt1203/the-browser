@@ -137,3 +137,11 @@ Le rapport fourni contient exactement 28 publications des Carnets de l’apothic
 Le propriétaire a précisé Jason Statham pour Mutiny, Gal Gadot pour The Runner et Michael Fassbender pour Hope. La résolution recherche la personne par son nom exact, croise sa filmographie avec le titre et l’année, puis revérifie le détail et le casting du film retenu. Une filmographie ambiguë ou un casting incohérent restent en attente ; aucun ID de ces trois films n’est supposé.
 
 Les textes Telegram des six messages Teen Wolf ont été vérifiés par le propriétaire en regardant les vidéos. `src/data/telegram-corrections.ts` conserve les six identifiants et les textes/noms de fichiers exacts. La priorité au texte ne s’applique que si le canal, l’identifiant et les deux sources correspondent encore à cette vérification, et si l’épisode du texte a pu être validé par TMDB. Un autre message, une modification de l’une des sources ou un désaccord sur l’œuvre revient au traitement prudent normal.
+
+## Dernier rapport : version 6
+
+Le rapport version 5 confirme 99,35 % de couverture des titres, 95,59 % de reconnaissance complète, et 36 publications en revue. Parmi ces publications, 28 portent sur les numéros des épisodes des Carnets de l’apothicaire ; les huit autres concernent des titres ou variantes de titre. Ce ne sont pas 36 films manquants.
+
+Les légendes bilingues séparées par ` / ` sont traitées comme deux titres candidats. Une année explicitement présentée dans la ligne documentaire (`2023 ‧ ...`) peut compléter un titre sans année ; elle n’écrase pas une année déjà identifiée. Une traduction ambiguë n’est corroborée par un autre titre que si la fiche TMDB déjà vérifiée contient effectivement ce nom et fait partie des candidats de l’ambiguïté. Les noms vérifiés sont conservés comme provenance ; un résultat indépendant sans ce nom ne supprime jamais une ambiguïté.
+
+Les annonces regroupant plusieurs épisodes ne certifient plus par erreur le premier épisode de la liste. Les homonymes restant sans version confirmée et les différences d’organisation des saisons restent en revue. Aucune de ces modifications ne constitue une mesure de précision à 99 %.

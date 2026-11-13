@@ -2,8 +2,8 @@ import { requestedTitles } from "../data/selection.ts";
 import { verifiedEpisodeSources } from "../data/telegram-corrections.ts";
 import type { Kind } from "../data/catalogue.ts";
 
-export const RESOLUTION_VERSION = 5;
-export type Reference = { kind: Kind; id: number; expectedTitle?: string; year?: number; season?: number; episode?: number };
+export const RESOLUTION_VERSION = 6;
+export type Reference = { kind: Kind; id: number; expectedTitle?: string; verifiedNames?: string[]; year?: number; season?: number; episode?: number };
 export type Candidate = { query: string; kind?: Kind; year?: number; season?: number; episode?: number };
 export type Pending = { input: string; reason: string; candidates?: { kind: Kind; id: number; title: string; year?: number }[] };
 export type Resolution = { titles: Reference[]; pending: string[]; review: Pending[]; ignored: string[] };
@@ -50,7 +50,7 @@ export function parseCandidate(input: string): Candidate | null {
   const season = seasonEpisode?.[1] ?? text.match(/\bS(?:aison)?\s*(\d+)/i)?.[1];
   const episode = seasonEpisode?.[2] ?? text.match(/\b[ÉE]P?(?:ISODE)?\s*[-:]?\s*(\d+)/i)?.[1];
   const episodeTail = text.match(/\b(?:S(?:aison)?\s*\d+\s*[|._ -]*)?[ÉE]P?(?:ISODES?)?\s*[-:]?\s*\d+([\s\S]*)/i)?.[1];
-  const multipleEpisodes = episodeTail !== undefined && /^\s*(?:\d+\s*)*(?:et|à|,|-)\s*\d+/i.test(episodeTail);
+  const multipleEpisodes = [...text.matchAll(/\bS\d+\s*[|._ -]*E\d+/gi)].length > 1 || episodeTail !== undefined && /^\s*(?:\d+\s*)*(?:et|à|,|-)\s*\d+/i.test(episodeTail);
   const year = text.match(/\b((?:19|20)\d{2})\b/)?.[1];
   const isFilm = /^\s*film\b/i.test(text);
   text = text.replace(/\.(?:mp4|mkv|avi|mov|mpg|mpeg|webm|m4v|ts)$/i, "")
@@ -112,7 +112,7 @@ export function matchesCandidate(item: Item, kind: Kind, candidate: Candidate): 
   return Number.isSafeInteger(item.id) && item.id > 0 && (!candidate.kind || candidate.kind === kind) && (!candidate.year || candidate.year === itemYear(item, kind)) &&
     [item.title, item.name, item.original_title, item.original_name].some((name) => name && expected.includes(normalizeTitle(name)));
 }
-const reference = (item: Item, kind: Kind): Reference => ({ kind, id: item.id, expectedTitle: (item.original_title ?? item.original_name ?? item.title ?? item.name)!, ...(itemYear(item, kind) ? { year: itemYear(item, kind) } : {}) });
+const reference = (item: Item, kind: Kind): Reference => ({ kind, id: item.id, verifiedNames: [...new Set([item.title, item.name, item.original_title, item.original_name].filter((name): name is string => Boolean(name)))], expectedTitle: (item.original_title ?? item.original_name ?? item.title ?? item.name)!, ...(itemYear(item, kind) ? { year: itemYear(item, kind) } : {}) });
 
 type Decision = { title?: Reference; reason?: string; candidates?: Pending["candidates"] };
 export function createResolver() {
@@ -210,7 +210,9 @@ export async function resolvePublication(
   resolve = createResolver(),
 ): Promise<Resolution> {
   const result: Resolution = { titles: [], pending: [], review: [], ignored: [] };
-  const texts = [...new Set([input.fileName ?? "", ...(input.text ?? "").split(/\r?\n/), ...(input.links ?? [])].map((s) => s.trim()).filter(Boolean))];
+  const captionLines = (input.text ?? "").split(/\r?\n/).flatMap((line) => !/https?:\/\//i.test(line) && line.includes(" / ") ? line.split(" / ") : [line]);
+  const metadataYears = [...new Set(captionLines.flatMap((line) => { const match = line.trim().match(/^((?:19|20)\d{2})\s*[‧·]/); return match ? [Number(match[1])] : []; }))];
+  const texts = [...new Set([input.fileName ?? "", ...captionLines, ...(input.links ?? [])].map((s) => s.trim()).filter(Boolean))];
   const explicit = texts.flatMap((line) => [...line.matchAll(/https:\/\/(?:www\.)?themoviedb\.org\/(movie|tv)\/(\d+)(?=$|[\s/?#-])/g)]);
   if (explicit.length) {
     const seen = new Set<string>();
@@ -234,12 +236,24 @@ export async function resolvePublication(
       const related = parsedLines.flatMap((item) => item.candidate && normalizeTitle(item.candidate.query) === normalizeTitle(candidate.query) ? [item.candidate] : []);
       const years = [...new Set(related.flatMap((c) => c.year === undefined ? [] : [c.year]))];
       const kinds = [...new Set(related.flatMap((c) => c.kind === undefined ? [] : [c.kind]))];
-      const enriched = { ...candidate, ...(candidate.year === undefined && years.length === 1 ? { year: years[0] } : {}), ...(candidate.kind === undefined && kinds.length === 1 ? { kind: kinds[0] } : {}) };
+      const yearHint = years.length === 1 ? years[0] : metadataYears.length === 1 && candidate.kind !== "serie" && candidate.season === undefined ? metadataYears[0] : undefined;
+      const enriched = { ...candidate, ...(candidate.year === undefined && yearHint !== undefined ? { year: yearHint } : {}), ...(candidate.kind === undefined && kinds.length === 1 ? { kind: kinds[0] } : {}) };
       const decision = await resolve(enriched);
       if (decision.title) result.titles.push(decision.title);
       if (!decision.title || decision.reason) result.review.push({ input: line, reason: decision.reason ?? "non-resolu", ...(decision.candidates ? { candidates: decision.candidates } : {}) });
     }
     for (const { line } of usefulLines.slice(8)) result.review.push({ input: line, reason: "trop-de-lignes-a-traiter" });
+    // Une traduction et son titre original peuvent désigner la même fiche vérifiée.
+    // Retirer seulement l’ambiguïté dont le titre figure effectivement dans cette fiche.
+    const resolved = new Map(result.titles.map((ref) => [`${ref.kind}:${ref.id}`, ref]));
+    if (resolved.size === 1) {
+      const ref = [...resolved.values()][0];
+      result.review = result.review.filter((issue) => {
+        if (issue.reason !== "ambigu" || !issue.candidates?.some((item) => item.id === ref.id && item.kind === ref.kind)) return true;
+        const query = parseCandidate(issue.input)?.query;
+        return !query || !ref.verifiedNames?.some((name) => normalizeTitle(name) === normalizeTitle(query));
+      });
+    }
     // Une légende et un nom de fichier qui identifient deux œuvres ne sont pas fusionnés au hasard.
     const unique = new Set(result.titles.map((t) => `${t.kind}:${t.id}`));
     const seasons = new Set(result.titles.flatMap((t) => t.season === undefined ? [] : [t.season]));
