@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "The Browser — Films et séries",
   description:
-    "Découvrez les films et séries du moment et trouvez où les regarder légalement en France.",
+    "Explorez notre catalogue de films et séries et retrouvez leurs publications dans le canal Telegram.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

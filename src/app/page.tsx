@@ -51,8 +51,8 @@ export default function Home() {
             The Browser
           </h1>
           <p className="mt-3 max-w-xl text-white/70">
-            Notre sélection de films et séries, avec les plateformes où les
-            regarder légalement en France.
+            Notre sélection de films et séries, avec un accès direct à leurs
+            publications dans le canal Telegram.
           </p>
         </div>
       </header>

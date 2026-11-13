@@ -1,3 +1,5 @@
+import type { TelegramPublication } from "../lib/catalogue-links.ts";
+
 export type Kind = "film" | "serie";
 
 export type Title = {
@@ -16,4 +18,7 @@ export type Title = {
   poster?: string;
   /** Page « Où regarder » (offres légales en France). */
   watchUrl: string;
+  /** Publication de référence dans le canal ; absente si aucune association n’existe. */
+  telegramUrl?: string;
+  telegramPublications?: TelegramPublication[];
 };

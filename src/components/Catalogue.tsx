@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { sortCatalogue } from "@/lib/catalogue-links";
 import type { Kind, Title } from "@/data/catalogue";
 
 type KindFilter = "tous" | Kind;
@@ -72,12 +73,12 @@ export function Catalogue({ items }: { items: Title[] }) {
 
   const visible = useMemo(() => {
     const q = normalize(query.trim());
-    return items.filter((i) => {
+    return sortCatalogue(items.filter((i) => {
       if (kind !== "tous" && i.kind !== kind) return false;
       if (genre && !i.genres.includes(genre)) return false;
       if (!q) return true;
       return normalize(`${i.title} ${i.genres.join(" ")} ${i.year ?? ""}`).includes(q);
-    });
+    }));
   }, [items, query, kind, genre]);
 
   return (
@@ -140,7 +141,7 @@ export function Catalogue({ items }: { items: Title[] }) {
       </div>
 
       <p className="mb-4 text-sm text-white/60" role="status">
-        {visible.length} résultat{visible.length > 1 ? "s" : ""}
+        {visible.length} résultat{visible.length > 1 ? "s" : ""} · Ordre alphabétique
       </p>
 
       {visible.length === 0 ? (
@@ -152,7 +153,8 @@ export function Catalogue({ items }: { items: Title[] }) {
           {visible.map((item) => (
             <li key={item.id}>
               <a
-                href={item.watchUrl}
+                href={item.telegramUrl ?? item.watchUrl}
+                aria-label={item.telegramUrl ? `Ouvrir ${item.title} dans le canal Telegram` : `Consulter les offres légales pour ${item.title}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group block overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:-translate-y-1 hover:border-violet-400/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
@@ -183,12 +185,34 @@ export function Catalogue({ items }: { items: Title[] }) {
                     {item.synopsis}
                   </p>
                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-sky-300 group-hover:text-sky-200">
-                    Où regarder
+                    {item.telegramUrl ? "Voir dans le canal" : "Offres légales"}
                     <span className="sr-only"> (s&apos;ouvre dans un nouvel onglet)</span>
                     <span aria-hidden="true">↗</span>
                   </span>
                 </div>
               </a>
+              {item.kind === "serie" && item.telegramPublications && item.telegramPublications.length > 0 && (
+                <details className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <summary className="cursor-pointer text-sm font-medium text-sky-300">{item.telegramPublications.some((publication) => publication.episode !== undefined) ? "Choisir un épisode" : "Voir les publications"}</summary>
+                  <ul className="mt-3 max-h-60 space-y-2 overflow-y-auto text-sm">
+                    {item.telegramPublications.map((publication) => (
+                      <li key={`${publication.url}:${publication.numbering ?? "post"}:${publication.season ?? ""}:${publication.episode ?? ""}`}>
+                        <a href={publication.url} target="_blank" rel="noopener noreferrer" className="block rounded px-2 py-1 text-white/80 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-sky-300">
+                          {publication.episode !== undefined
+                            ? `Saison ${publication.season} · Épisode ${publication.episode}${publication.numbering === "channel" ? " · numérotation du canal" : ""}`
+                            : `Publication nº ${publication.messageId}`}
+                          <span className="sr-only"> — ouvrir dans Telegram</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {item.telegramUrl && (
+                <a href={item.watchUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs text-white/60 underline hover:text-white">
+                  Offres légales en France
+                </a>
+              )}
             </li>
           ))}
         </ul>

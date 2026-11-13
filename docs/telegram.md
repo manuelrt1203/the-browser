@@ -155,3 +155,13 @@ Le message 20 concerne explicitement **Avatar en dessin animé (2005)**. Un indi
 Le propriétaire a déclaré avoir regardé les 28 vidéos des Carnets de l’apothicaire. Le registre de confirmation humaine contient leur ID, leur texte et leur nom de fichier exacts. Après validation de l’identité de la série par TMDB, une numérotation non disponible dans TMDB peut être conservée dans **`sourceEpisode`**, avec `verifiedBy: "owner"`. Elle n’est jamais écrite dans les champs `season` et `episode` réservés à TMDB. Le site affiche séparément les épisodes référencés par TMDB et ceux vérifiés dans le canal. Si TMDB confirme ensuite la numérotation, les champs ordinaires sont utilisés sans double attribution de provenance.
 
 Le rapport distingue `ownerVerifiedMediaPosts` : le nombre de vidéos dont la vérification d’épisode provient du propriétaire. La reconnaissance complète inclut désormais ces vérifications humaines explicites, sans prétendre que TMDB les confirme. `precisionPercent` reste non mesuré pour l’ensemble du catalogue. Si les sources changent ou si l’ID de la série diffère, cette exception ne s’applique plus.
+
+## Navigation du catalogue et liens de messages
+
+Le catalogue est trié alphabétiquement avec la collation française (accents/casse ignorés pour l’ordre, chiffres triés naturellement). Les remakes de même titre sont départagés par année. La recherche et les filtres conservent cet ordre.
+
+Les liens du canal public sont construits depuis les IDs Redis : `https://t.me/TheBrowser365/MESSAGE_ID`. Aucune recherche Telegram par nom et aucun secret de bot ne sont transmis au navigateur. La concordance entre la clé du message et son ID est vérifiée avant de générer le lien. Pour un autre canal numérique, le lien interne `t.me/c/...` exige l’accès à ce canal.
+
+Le clic sur une affiche privilégie une publication avec un fichier vidéo. Pour une série, la première publication disponible est choisie par saison/épisode, puis ID de message. Le volet « Choisir un épisode » fournit les liens vers les publications de chaque épisode identifié ; les numéros vérifiés dans le canal sont libellés comme tels. Les doublons d’épisode privilégient un message avec fichier. Un message sans numéro est présenté comme une publication et ne reçoit aucun numéro inventé.
+
+Si aucun message n’est associé au titre, aucun lien Telegram n’est fabriqué : la fiche indique les offres légales. Ces offres restent également accessibles séparément sur les fiches liées au canal. Aucun réimport n’est requis pour créer ces liens : les IDs de messages sont déjà enregistrés.
