@@ -30,7 +30,7 @@ if (!dryRun && !offline) {
   }
 }
 const resolve = createResolver();
-const report = { channelId, resolutionVersion:RESOLUTION_VERSION, mode: offline ? 'offline-no-verification' : dryRun ? 'dry-run' : 'import', posts:0, imported:0, unchanged:0, failed:0, mediaPosts:0, resolvedMediaPosts:0, fullyResolvedMediaPosts:0, recognizedTitles:[], review:[], errors:[], offlineCandidates:[] };
+const report = { channelId, resolutionVersion:RESOLUTION_VERSION, mode: offline ? 'offline-no-verification' : dryRun ? 'dry-run' : 'import', posts:0, imported:0, unchanged:0, failed:0, mediaPosts:0, resolvedMediaPosts:0, fullyResolvedMediaPosts:0, ownerVerifiedMediaPosts:0, recognizedTitles:[], review:[], errors:[], offlineCandidates:[] };
 const unique = new Set();
 let next = 0;
 let halted = false;

@@ -34,7 +34,7 @@ test('import réel du script : deux sources, canal isolé, rapport, seuil et ré
   let child=run('--dry-run','--minimum-coverage','99');
   assert.equal(child.status,1,child.stderr);
   let result=JSON.parse(await readFile(report,'utf8'));
-  assert.equal(result.posts,2);assert.equal(result.mediaPosts,2);assert.equal(result.fullyResolvedMediaPosts,1);assert.equal(result.mediaCoveragePercent,50);assert.equal(result.precisionPercent,null);assert.equal(result.thresholdMet,false);
+  assert.equal(result.ownerVerifiedMediaPosts,0);assert.equal(result.posts,2);assert.equal(result.mediaPosts,2);assert.equal(result.fullyResolvedMediaPosts,1);assert.equal(result.mediaCoveragePercent,50);assert.equal(result.precisionPercent,null);assert.equal(result.thresholdMet,false);
   assert.equal(result.review[0].messageId,2);
   await assert.rejects(stat(storage));
   child=run();assert.equal(child.status,0,child.stderr);
@@ -49,5 +49,28 @@ test('import réel du script : deux sources, canal isolé, rapport, seuil et ré
   env.MOCK_FAIL='1';child=run();assert.equal(child.status,1,child.stderr);
   result=JSON.parse(await readFile(report,'utf8'));assert.ok(result.failed>0);
   assert.equal(await readFile(join(storage,'telegram-catalogue.json'),'utf8'),before);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});
+
+test('le compteur de vidéos vérifiées par le propriétaire reste numérique et exact',async()=>{
+ const {ownerVerifiedEpisodes}=await import('../src/data/telegram-corrections.ts');
+ const source=ownerVerifiedEpisodes[0];
+ const directory=await mkdtemp(join(tmpdir(),'owner-count-import-'));
+ try{
+  const input=join(directory,'export.json'),preload=join(directory,'mock.mjs'),report=join(directory,'report.json');
+  await writeFile(input,JSON.stringify({id:4339801492,type:'public_channel',messages:[{id:source.messageId,type:'message',date_unixtime:'100',text:source.text,file_name:source.fileName,media_type:'video_file'}]}));
+  await writeFile(preload,`globalThis.fetch=async(input)=>{
+   const url=new URL(input);if(url.hostname!=='api.themoviedb.org')throw new Error('Unexpected host');
+   if(url.pathname.includes('/season/'))return new Response('',{status:404});
+   return Response.json({id:220542,name:'Les Carnets de l’apothicaire',original_name:'薬屋のひとりごと',first_air_date:'2023-10-22'});
+  };`);
+  const env={...process.env,TMDB_READ_TOKEN:'test'};
+  const child=spawnSync(process.execPath,['--import',preload,'--experimental-strip-types',script,input,'4339801492','--dry-run','--report',report],{env,cwd:directory,encoding:'utf8'});
+  assert.equal(child.status,0,child.stderr);
+  const result=JSON.parse(await readFile(report,'utf8'));
+  assert.equal(result.ownerVerifiedMediaPosts,1);
+  assert.equal(result.fullyResolvedMediaPosts,1);
+  assert.equal(result.mediaCoveragePercent,100);
+  assert.deepEqual(result.review,[]);
  }finally{await rm(directory,{recursive:true,force:true});}
 });
