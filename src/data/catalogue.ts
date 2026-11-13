@@ -10,6 +10,8 @@ export type Title = {
   synopsis: string;
   /** Épisodes identifiés dans les publications, sans lien de lecture vidéo. */
   episodes?: { season: number; episode: number }[];
+  /** Numérotation du canal vérifiée par le propriétaire, distincte de TMDB. */
+  sourceEpisodes?: { season: number; episode: number }[];
   /** URL de l'affiche. Sans valeur, une affiche générée est affichée. */
   poster?: string;
   /** Page « Où regarder » (offres légales en France). */

@@ -129,6 +129,11 @@ export async function getCatalogue(): Promise<Title[]> {
           .map((ref) => ({ season: ref.season!, episode: ref.episode! }));
         if (episodes.length) title.episodes = [...new Map(episodes.map((item) => [`${item.season}:${item.episode}`, item])).values()]
           .sort((a, b) => a.season - b.season || a.episode - b.episode);
+        const sourceEpisodes = channelPosts.flatMap((post) => post.titles)
+          .filter((ref) => `${ref.kind}-${ref.id}` === title.id && ref.sourceEpisode?.verifiedBy === "owner")
+          .map((ref) => ({ season: ref.sourceEpisode!.season, episode: ref.sourceEpisode!.episode }));
+        if (sourceEpisodes.length) title.sourceEpisodes = [...new Map(sourceEpisodes.map((ep) => [`${ep.season}:${ep.episode}`, ep])).values()]
+          .sort((a, b) => a.season - b.season || a.episode - b.episode);
         titles.push(title);
       }
     } else if (!(result.reason instanceof TmdbError && result.reason.status === 404)) {

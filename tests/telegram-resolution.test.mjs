@@ -262,3 +262,40 @@ test('une traduction ambiguë peut être corroborée par le titre original véri
 test('une annonce de plusieurs épisodes n’en certifie pas un seul par erreur',()=>{
  assert.equal(parseCandidate("Avatar le dernier maître de l'air S2E1 S2E2 S2E3").episode,undefined);
 });
+
+test('la vérification humaine des Carnets conserve les numéros source sans inventer des numéros TMDB',async()=>{
+ const {ownerVerifiedEpisodes}=await import('../src/data/telegram-corrections.ts');
+ const resolve=async()=>({title:{kind:'serie',id:220542,expectedTitle:'Les Carnets de l’apothicaire',year:2023},reason:'episode-non-verifie'});
+ assert.equal(ownerVerifiedEpisodes.length,28);
+ for(const source of ownerVerifiedEpisodes){
+  const result=await resolvePublication(source,resolve);
+  assert.equal(result.titles.length,1);assert.equal(result.titles[0].episode,undefined);assert.equal(result.titles[0].season,undefined);
+  assert.equal(result.titles[0].sourceEpisode.verifiedBy,'owner');
+  assert.equal(result.titles[0].sourceEpisode.episode,parseCandidate(source.fileName).episode);
+  assert.deepEqual(result.review,[]);
+  const changed=await resolvePublication({...source,messageId:99999},resolve);
+  assert.equal(changed.titles[0].sourceEpisode,undefined);assert.ok(changed.review.some(i=>i.reason==='episode-non-verifie'));
+ }
+});
+
+test('une autre œuvre ne peut pas bénéficier du registre de vérification humaine',async()=>{
+ const {ownerVerifiedEpisodes}=await import('../src/data/telegram-corrections.ts');
+ const result=await resolvePublication(ownerVerifiedEpisodes[0],async()=>({title:{kind:'serie',id:999,expectedTitle:'Autre série'},reason:'episode-non-verifie'}));
+ assert.equal(result.titles[0].sourceEpisode,undefined);assert.ok(result.review.length);
+});
+
+test('un casting incohérent ne peut pas être contourné par une recherche de titre',()=>mockTmdb(async()=>{
+ const result=await createResolver()({query:'Brothers',kind:'film',year:2009});
+ assert.equal(result.title,undefined);assert.equal(result.reason,'casting-incoherent');
+},url=>Response.json(url.pathname.endsWith('/credits')?{cast:[{name:'Autre acteur'}]}:{id:7445,title:'Brothers',release_date:'2009-12-04'})));
+
+test('la confirmation Avatar 2005 reste limitée à l’annonce vérifiée',async()=>{
+ const {verifiedTitleSources}=await import('../src/data/telegram-corrections.ts');
+ const source=verifiedTitleSources[0];const seen=[];
+ await resolvePublication({...source,fileName:undefined},async c=>{seen.push(c);return {title:{kind:'serie',id:c.year===2005?246:82452,expectedTitle:c.query,year:c.year}};});
+ assert.equal(seen[0].year,2005);assert.equal(seen[0].kind,'serie');
+ const other=[];
+ await resolvePublication({...source,messageId:99,fileName:undefined},async c=>{other.push(c);return {reason:'ambigu'};});
+ assert.equal(other[0].year,undefined);
+ assert.equal(parseCandidate('Avatar The Last Airbender 2024 S02E01.mkv').year,2024);
+});

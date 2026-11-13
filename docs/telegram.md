@@ -145,3 +145,13 @@ Le rapport version 5 confirme 99,35 % de couverture des titres, 95,59 % de recon
 Les légendes bilingues séparées par ` / ` sont traitées comme deux titres candidats. Une année explicitement présentée dans la ligne documentaire (`2023 ‧ ...`) peut compléter un titre sans année ; elle n’écrase pas une année déjà identifiée. Une traduction ambiguë n’est corroborée par un autre titre que si la fiche TMDB déjà vérifiée contient effectivement ce nom et fait partie des candidats de l’ambiguïté. Les noms vérifiés sont conservés comme provenance ; un résultat indépendant sans ce nom ne supprime jamais une ambiguïté.
 
 Les annonces regroupant plusieurs épisodes ne certifient plus par erreur le premier épisode de la liste. Les homonymes restant sans version confirmée et les différences d’organisation des saisons restent en revue. Aucune de ces modifications ne constitue une mesure de précision à 99 %.
+
+## Confirmations finales du propriétaire (version 7)
+
+Le propriétaire a confirmé les versions 2017 de La Belle et la Bête (Emma Watson), 2021 des Éternels (Marvel), 2014 de Maléfique (Angelina Jolie), 2011 du Flingueur (Jason Statham) et 2023 de La Petite Sirène. Les détails TMDB des IDs retenus continuent d’être vérifiés ; les indices de casting confirmés restent des contraintes de résolution.
+
+Le message 20 concerne explicitement **Avatar en dessin animé (2005)**. Un indice de version limité au canal, à l’ID et au texte exacts permet de le résoudre sans transformer les autres publications Avatar, notamment celles qui portent l’année 2024.
+
+Le propriétaire a déclaré avoir regardé les 28 vidéos des Carnets de l’apothicaire. Le registre de confirmation humaine contient leur ID, leur texte et leur nom de fichier exacts. Après validation de l’identité de la série par TMDB, une numérotation non disponible dans TMDB peut être conservée dans **`sourceEpisode`**, avec `verifiedBy: "owner"`. Elle n’est jamais écrite dans les champs `season` et `episode` réservés à TMDB. Le site affiche séparément les épisodes référencés par TMDB et ceux vérifiés dans le canal. Si TMDB confirme ensuite la numérotation, les champs ordinaires sont utilisés sans double attribution de provenance.
+
+Le rapport distingue `ownerVerifiedMediaPosts` : le nombre de vidéos dont la vérification d’épisode provient du propriétaire. La reconnaissance complète inclut désormais ces vérifications humaines explicites, sans prétendre que TMDB les confirme. `precisionPercent` reste non mesuré pour l’ensemble du catalogue. Si les sources changent ou si l’ID de la série diffère, cette exception ne s’applique plus.

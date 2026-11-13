@@ -171,7 +171,12 @@ export function Catalogue({ items }: { items: Title[] }) {
                   </p>
                   {item.episodes && item.episodes.length > 0 && (
                     <p className="mt-1 text-xs text-sky-300">
-                      {item.episodes.length} épisode{item.episodes.length > 1 ? "s" : ""} identifié{item.episodes.length > 1 ? "s" : ""}
+                      {item.episodes.length} épisode{item.episodes.length > 1 ? "s" : ""} référencé{item.episodes.length > 1 ? "s" : ""} par TMDB
+                    </p>
+                  )}
+                  {item.sourceEpisodes && item.sourceEpisodes.length > 0 && (
+                    <p className="mt-1 text-xs text-sky-300">
+                      {item.sourceEpisodes.length} épisode{item.sourceEpisodes.length > 1 ? "s" : ""} vérifié{item.sourceEpisodes.length > 1 ? "s" : ""} dans le canal
                     </p>
                   )}
                   <p className="mt-2 line-clamp-2 text-xs text-white/70">

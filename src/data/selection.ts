@@ -100,6 +100,11 @@ export const requestedTitles: RequestedTitle[] = [
   { kind: "film", title: "Kill Zone", year: 2005, aliases: ["SPL : Kill Zone", "SPL", "SPL: Kill Zone"] },
   { kind: "film", title: "Les Maîtres de l’univers" },
   { kind: "film", title: "Mutiny (2026)", year: 2026, cast: ["Jason Statham"] },
+  { kind: "film", title: "La Belle et la Bête", year: 2017, id: 321612, cast: ["Emma Watson"], aliases: ["Beauty and the Beast"] },
+  { kind: "film", title: "Les Éternels", year: 2021, id: 524434, aliases: ["Eternals"] },
+  { kind: "film", title: "Maléfique", year: 2014, id: 102651, cast: ["Angelina Jolie"], aliases: ["Maleficent"] },
+  { kind: "film", title: "Le Flingueur", year: 2011, id: 27582, cast: ["Jason Statham"], aliases: ["The Mechanic", "Mechanic"] },
+  { kind: "film", title: "La Petite Sirène", year: 2023, id: 447277, aliases: ["The Little Mermaid"] },
 ];
 
 /** Titres reliés à TMDB, dans l’ordre de la liste demandée. */

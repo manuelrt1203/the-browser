@@ -1,9 +1,9 @@
 import { requestedTitles } from "../data/selection.ts";
-import { verifiedEpisodeSources } from "../data/telegram-corrections.ts";
+import { verifiedEpisodeSources, ownerVerifiedEpisodes, verifiedTitleSources } from "../data/telegram-corrections.ts";
 import type { Kind } from "../data/catalogue.ts";
 
-export const RESOLUTION_VERSION = 6;
-export type Reference = { kind: Kind; id: number; expectedTitle?: string; verifiedNames?: string[]; year?: number; season?: number; episode?: number };
+export const RESOLUTION_VERSION = 7;
+export type Reference = { kind: Kind; id: number; expectedTitle?: string; verifiedNames?: string[]; year?: number; season?: number; episode?: number; sourceEpisode?: { season: number; episode: number; verifiedBy: "owner" } };
 export type Candidate = { query: string; kind?: Kind; year?: number; season?: number; episode?: number };
 export type Pending = { input: string; reason: string; candidates?: { kind: Kind; id: number; title: string; year?: number }[] };
 export type Resolution = { titles: Reference[]; pending: string[]; review: Pending[]; ignored: string[] };
@@ -127,6 +127,7 @@ export function createResolver() {
         const requiredCast = known[0].cast ?? [];
         const credits = requiredCast.length ? await tmdbRequest<{ cast: { name: string }[] }>(`/movie/${detail.id}/credits`) : null;
         if (!requiredCast.length || requiredCast.every((name) => credits?.cast?.some((actor) => normalizeTitle(actor.name) === normalizeTitle(name)))) return { title: reference(detail, known[0].kind) };
+        return { reason: "casting-incoherent" };
       }
       // Un ancien ID ne peut pas être utilisé s’il ne valide plus le titre et l’année.
     }
@@ -227,6 +228,7 @@ export async function resolvePublication(
       else result.review.push({ input: match[0], reason: "lien-tmdb-invalide" });
     }
   } else {
+    const titleHint = verifiedTitleSources.find((source) => source.channelId === input.channelId && source.messageId === input.messageId && source.text === input.text && source.fileName === (input.fileName ?? null));
     const allLines = texts.map((line) => ({ line, candidate: parseCandidate(line) }));
     result.ignored.push(...allLines.filter((item) => !item.candidate).map((item) => item.line));
     const usefulLines = allLines.filter((item) => item.candidate);
@@ -237,7 +239,7 @@ export async function resolvePublication(
       const years = [...new Set(related.flatMap((c) => c.year === undefined ? [] : [c.year]))];
       const kinds = [...new Set(related.flatMap((c) => c.kind === undefined ? [] : [c.kind]))];
       const yearHint = years.length === 1 ? years[0] : metadataYears.length === 1 && candidate.kind !== "serie" && candidate.season === undefined ? metadataYears[0] : undefined;
-      const enriched = { ...candidate, ...(candidate.year === undefined && yearHint !== undefined ? { year: yearHint } : {}), ...(candidate.kind === undefined && kinds.length === 1 ? { kind: kinds[0] } : {}) };
+      const enriched = { ...candidate, ...(candidate.year === undefined && yearHint !== undefined ? { year: yearHint } : {}), ...(candidate.kind === undefined && kinds.length === 1 ? { kind: kinds[0] } : {}), ...(titleHint ? { kind: titleHint.kind, year: titleHint.year } : {}) };
       const decision = await resolve(enriched);
       if (decision.title) result.titles.push(decision.title);
       if (!decision.title || decision.reason) result.review.push({ input: line, reason: decision.reason ?? "non-resolu", ...(decision.candidates ? { candidates: decision.candidates } : {}) });
@@ -274,6 +276,15 @@ export async function resolvePublication(
       result.titles = result.titles.map(({ kind, id, expectedTitle, year }) => ({ kind, id, expectedTitle, year }));
       }
     }
+  }
+  const ownerRecord = ownerVerifiedEpisodes.find((source) => source.channelId === input.channelId && source.messageId === input.messageId && source.text === input.text && source.fileName === input.fileName);
+  const sourceNumber = ownerRecord ? parseCandidate(ownerRecord.fileName) : null;
+  if (ownerRecord && sourceNumber?.season !== undefined && sourceNumber.episode !== undefined &&
+    result.titles.length && result.titles.every((ref) => ref.kind === ownerRecord.kind && ref.id === ownerRecord.id)) {
+    result.titles = result.titles.map((ref) => ref.season !== undefined && ref.episode !== undefined ? ref : {
+      ...ref, sourceEpisode: { season: sourceNumber.season!, episode: sourceNumber.episode!, verifiedBy: "owner" },
+    });
+    result.review = result.review.filter((issue) => issue.reason !== "episode-non-verifie");
   }
   if (input.fileName && /\.(?:mp4|mkv|avi|mov|mpg|mpeg|webm|m4v)$/i.test(input.fileName) && !result.titles.length && !result.review.length) {
     result.review.push({ input: input.fileName, reason: "fichier-sans-titre-identifiable" });

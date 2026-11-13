@@ -59,6 +59,7 @@ await Promise.all(Array.from({length: Math.min(3,messages.length)}, async () => 
         ? { text: override }
         : { text: caption, fileName, links, channelId, messageId: message.id },resolve);
       if (media && result.titles.length) report.resolvedMediaPosts++;
+      if (media && result.titles.some((ref) => ref.sourceEpisode?.verifiedBy === 'owner')) report.ownerVerifiedMediaPosts++;
       if (media && result.titles.length && !result.review.length) report.fullyResolvedMediaPosts++;
       for (const title of result.titles) unique.add(`${title.kind}:${title.id}`);
       if (result.review.length) report.review.push({messageId:message.id,text:caption,fileName,issues:result.review});
@@ -85,7 +86,7 @@ report.titleCoveragePercent = offline || !report.mediaPosts ? null : Math.round(
 report.precisionPercent = null; // Nécessite une vérité terrain validée, pas le seul succès des requêtes.
 report.thresholdMet = threshold === undefined ? null : (!offline && report.mediaCoveragePercent !== null && report.mediaCoveragePercent >= threshold && report.failed === 0 && report.unprocessedPosts === 0);
 await writeFile(reportFile,JSON.stringify(report,null,2)+'\n',{mode:0o600});
-console.log(JSON.stringify({channelId,mode:report.mode,posts:report.posts,imported:report.imported,unchanged:report.unchanged,failed:report.failed,unprocessedPosts:report.unprocessedPosts,uniqueTitles:unique.size,mediaPosts:report.mediaPosts,fullyResolvedMediaPosts:report.fullyResolvedMediaPosts,mediaCoveragePercent:report.mediaCoveragePercent,titleCoveragePercent:report.titleCoveragePercent,precisionPercent:null,reviewPosts:report.review.length,thresholdMet:report.thresholdMet,report:reportFile}));
+console.log(JSON.stringify({channelId,mode:report.mode,posts:report.posts,imported:report.imported,unchanged:report.unchanged,failed:report.failed,unprocessedPosts:report.unprocessedPosts,uniqueTitles:unique.size,mediaPosts:report.mediaPosts,fullyResolvedMediaPosts:report.fullyResolvedMediaPosts,ownerVerifiedMediaPosts:report.ownerVerifiedMediaPosts,mediaCoveragePercent:report.mediaCoveragePercent,titleCoveragePercent:report.titleCoveragePercent,precisionPercent:null,reviewPosts:report.review.length,thresholdMet:report.thresholdMet,report:reportFile}));
 // Invalider le cache après l’import si la configuration du site est disponible.
 if (!offline && !dryRun && report.imported > 0 && process.env.SITE_URL && process.env.TELEGRAM_WEBHOOK_SECRET) {
   try {

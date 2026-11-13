@@ -69,3 +69,14 @@ test('un réimport explicite peut corriger une analyse de même version, sans re
     assert.equal(await saveChannelPost('-1001',{...corrected,fileName:undefined},file,{reanalyse:true}),false);
   } finally {await rm(directory,{recursive:true,force:true});}
 });
+
+test('la provenance humaine persiste sans devenir une numérotation TMDB',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'owner-episode-'));const file=join(directory,'catalogue.json');
+ const post={messageId:650,version:100,updateId:1,text:'Vérifié',titles:[{kind:'serie',id:220542,sourceEpisode:{season:2,episode:1,verifiedBy:'owner'}}],pending:[]};
+ try{
+  assert.equal(await saveChannelPost('-1001',post,file),true);
+  const ref=(await readChannelState(file)).posts['-1001:650'].titles[0];
+  assert.equal(ref.season,undefined);assert.equal(ref.episode,undefined);assert.deepEqual(ref.sourceEpisode,post.titles[0].sourceEpisode);
+  await assert.rejects(saveChannelPost('-1001',{...post,updateId:2,titles:[{...post.titles[0],sourceEpisode:{season:2,episode:1,verifiedBy:'automatic'}}]},file),/invalide/);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});
