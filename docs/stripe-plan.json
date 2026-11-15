@@ -1,0 +1,180 @@
+{
+  "blueprints": [
+    {
+      "id": "bp_e6690ac7a83a",
+      "apiVersion": {
+        "max": null,
+        "min": "2020-08-27"
+      },
+      "authoring_text": "Derived from the complete three-step flow: setup-chapter (product creation), checkout-chapter (Checkout Session creation and completion), and webhook-chapter (checkout.session.completed event handling).",
+      "authoring_urls": [],
+      "blueprint_version": 1,
+      "created_by": "",
+      "customFeatures": null,
+      "details": null,
+      "embedding": null,
+      "key": "one-time-payment-with-checkout",
+      "meta": {
+        "template_version": 0
+      },
+      "metadata": {
+        "customFeatures": null,
+        "features": null,
+        "products": [
+          "checkout",
+          "payment_links"
+        ]
+      },
+      "params": null,
+      "settings": [
+        {
+          "description": "Configuration for the one-time payment flow.",
+          "key": "payment-settings",
+          "settings": [
+            {
+              "defaultValue": "usd",
+              "description": "Three-letter ISO currency code for the payment.",
+              "key": "currency",
+              "options": null,
+              "title": "Currency",
+              "type": "string"
+            },
+            {
+              "defaultValue": "2000",
+              "description": "Amount in smallest currency unit (e.g., cents for USD).",
+              "key": "unit_amount",
+              "options": null,
+              "title": "Unit Amount",
+              "type": "string"
+            },
+            {
+              "defaultValue": "Example Product",
+              "description": "Name of the product being sold.",
+              "key": "product_name",
+              "options": null,
+              "title": "Product Name",
+              "type": "string"
+            },
+            {
+              "defaultValue": "https://example.com/success",
+              "description": "URL to redirect to after successful payment.",
+              "key": "success_url",
+              "options": null,
+              "title": "Success URL",
+              "type": "string"
+            },
+            {
+              "defaultValue": "https://example.com/cancel",
+              "description": "URL to redirect to if the customer cancels.",
+              "key": "cancel_url",
+              "options": null,
+              "title": "Cancel URL",
+              "type": "string"
+            }
+          ],
+          "title": "Payment Settings"
+        }
+      ],
+      "steps": [
+        {
+          "description": "Create a product with pricing information for the one-time payment.",
+          "key": "setup-chapter",
+          "nodes": [
+            {
+              "description": "Create a product with pricing information for the one-time payment.",
+              "key": "create-product",
+              "request": {
+                "headers": null,
+                "key": "create-product-request",
+                "method": "POST",
+                "params": {
+                  "default_price_data": {
+                    "currency": "${settings.currency}",
+                    "unit_amount": "${settings.unit_amount}"
+                  },
+                  "name": "${settings.product_name}"
+                },
+                "path": "/v1/products"
+              },
+              "subtitle": null,
+              "title": "Create product and price",
+              "type": "apiRequest"
+            }
+          ],
+          "title": "Set up product and pricing"
+        },
+        {
+          "description": "Create a Checkout Session and complete the payment flow.",
+          "key": "checkout-chapter",
+          "nodes": [
+            {
+              "description": "Create a Checkout Session for a one-time payment.",
+              "key": "create-checkout-session",
+              "request": {
+                "headers": null,
+                "key": "create-checkout-session-request",
+                "method": "POST",
+                "params": {
+                  "cancel_url": "${settings.cancel_url}",
+                  "line_items": [
+                    {
+                      "price": "${step.setup-chapter.create-product.default_price}",
+                      "quantity": 1
+                    }
+                  ],
+                  "mode": "payment",
+                  "success_url": "${settings.success_url}"
+                },
+                "path": "/v1/checkout/sessions"
+              },
+              "subtitle": null,
+              "title": "Create Checkout Session",
+              "type": "apiRequest"
+            },
+            {
+              "description": "Direct the customer to the Checkout Session URL to complete the payment.",
+              "formFields": null,
+              "instructions": "Open the Checkout Session URL returned from the create-checkout-session request. The customer will enter their payment details and complete the purchase. Upon success, they will be redirected to the success_url.",
+              "key": "complete-checkout",
+              "path": null,
+              "subtitle": null,
+              "surface": "checkout",
+              "title": "Complete checkout",
+              "type": "hostedUx"
+            }
+          ],
+          "title": "Complete checkout"
+        },
+        {
+          "description": "Listen for webhook events to confirm the payment was successful.",
+          "key": "webhook-chapter",
+          "nodes": [
+            {
+              "description": "Listen for the checkout.session.completed webhook event to confirm that the payment was successful and fulfill the order.",
+              "event_type": "checkout.session.completed",
+              "key": "handle-checkout-completed",
+              "subtitle": null,
+              "title": "Wait for checkout.session.completed event",
+              "type": "eventHandler"
+            }
+          ],
+          "title": "Handle webhook events"
+        }
+      ],
+      "stripe_products": [],
+      "summary": "Create a product with pricing, generate a Checkout Session for a one-time payment, and handle webhook events to confirm payment completion.",
+      "title": "Accept a one-time payment with Checkout"
+    }
+  ],
+  "decision_trees": [],
+  "guide_id": "iguide_61VlOAzo20DlZaZ8V41R1bnaGRieM",
+  "instructions": "Use the doc_links from your chosen decision tree path to guide the merchant's Stripe integration. Each link points to the recommended integration approach for their use case.",
+  "integration_shape": {
+    "checkout_type": "hosted",
+    "origin_context": "web",
+    "provider": "checkout_studio"
+  },
+  "status": "accepted",
+  "type": "guide",
+  "use_cases": []
+}

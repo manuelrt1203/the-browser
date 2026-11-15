@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { Catalogue } from "@/components/Catalogue";
 import type { Title } from "@/data/catalogue";
@@ -54,6 +55,9 @@ export default function Home() {
             Notre sélection de films et séries, avec un accès direct à leurs
             publications dans le canal Telegram.
           </p>
+          <Link href="/premium" className="mt-6 inline-block rounded-lg border border-sky-300/40 px-5 py-3 font-medium text-sky-200 hover:bg-sky-300/10">
+            Découvrir Premium
+          </Link>
         </div>
       </header>
 

@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { hasCatalogueStorage, readChannelState, saveChannelPost } from "@/lib/telegram-store";
 
 import { RESOLUTION_VERSION, resolvePublication } from "@/lib/telegram-resolution";
+import { premiumTelegramReply } from "@/lib/premium-auth";
 
 
 export async function POST(request: Request) {
@@ -22,6 +23,12 @@ export async function POST(request: Request) {
   try { update = JSON.parse(body); }
   catch { return Response.json({ error: "JSON invalide" }, { status: 400 }); }
   if (!update || !Number.isSafeInteger(update.update_id)) return new Response(null, { status: 400 });
+  if (update.message || update.callback_query) {
+    try {
+      const reply = await premiumTelegramReply(update);
+      return Response.json(reply ?? { ok: true, ignored: true });
+    } catch { return Response.json({ error: "Connexion non enregistrée, réessayer" }, { status: 503 }); }
+  }
   const post = update.edited_channel_post ?? update.channel_post;
   if (!post) return Response.json({ ok: true, ignored: true });
   if (post.chat?.type !== "channel" || String(post.chat?.id) !== channel) {

@@ -1,4 +1,5 @@
 // Aucun jeton n’est imprimé, y compris en cas d’erreur réseau.
+import { premiumTelegramUpdates } from './telegram-updates.mjs';
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
 const channelId = process.env.TELEGRAM_CHANNEL_ID;
@@ -29,7 +30,8 @@ if (process.argv.includes('--register')) {
   if (info.url && info.url !== url.toString() && !process.argv.includes('--replace')) throw new Error('Un autre webhook existe : vérifier sa fonction avant de passer --replace.');
   const health = await fetch(url, { headers:{'X-Telegram-Bot-Api-Secret-Token':secret}, signal:AbortSignal.timeout(20_000) });
   if (!health.ok) throw new Error('Le stockage ou le secret du site ne sont pas prêts ; webhook inchangé.');
-  await telegram('setWebhook', {url:url.toString(),secret_token:secret,allowed_updates:['channel_post','edited_channel_post'],drop_pending_updates:false});
+  const allowed = premiumTelegramUpdates(info.allowed_updates, process.env.PREMIUM_TELEGRAM_AUTH_ENABLED === '1');
+  await telegram('setWebhook', {url:url.toString(),secret_token:secret,allowed_updates:allowed,drop_pending_updates:false});
 }
 const current = await telegram('getWebhookInfo');
 console.log(JSON.stringify({bot:me.username,channel:chat.username,expectedWebhook:url.toString(),webhookMatches:current.url===url.toString(),pendingUpdates:current.pending_update_count,hasDeliveryError:Boolean(current.last_error_date)}));

@@ -1,6 +1,6 @@
 # Mémoire du projet — The Browser
 
-Mise à jour : 13 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+Mise à jour : 15 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
 ## Décisions produit en vigueur
 
@@ -9,14 +9,18 @@ Mise à jour : 13 novembre 2026. Ce document décrit les décisions du propriét
 - **Pas de lecteur vidéo intégré** : le propriétaire a retiré cette partie du plan V2.
 - **Rust mis de côté** : continuer avec Next.js/TypeScript ; aucune API Rust à créer pour le périmètre actuel.
 - Monétisation retenue pour le lancement : **abonnement mensuel à un canal privé**.
-- **@TheBrowser365 reste public pour la découverte** ; un canal privé distinct sera réservé aux clients. Le canal privé reste à créer/configurer ; son identifiant n’est pas encore connu.
-- Le propriétaire exerce depuis la France et vise aussi des clients au **Congo**. RDC ou République du Congo reste à préciser ; ne pas supposer le pays ni la devise.
-- Le propriétaire dispose déjà d’une solution de paiement pour ses clients africains et souhaite la présenter plus tard. Ne pas choisir ou remplacer cette solution à sa place.
-- **Prix, devises, prestataire et renouvellement manuel/automatique sont reportés à une prochaine session**, sans date ferme. Aucun paiement réel n’est implémenté.
+- **@TheBrowser365 reste public pour la découverte** ; un canal privé distinct sera réservé aux clients. Le propriétaire confirme avoir créé le canal privé et ajouté @Thebrowser365_bot comme administrateur. Son identifiant et les permissions effectives restent à vérifier par API.
+- Le propriétaire exerce depuis la France et vise notamment le **Congo-Brazzaville (République du Congo)**. Il souhaite proposer l’abonnement dans tous les pays ; la couverture effective de SasPay et Stripe reste à vérifier, sans supposer une disponibilité universelle.
+- Le propriétaire retient **SasPay** (https://app.saspay.me) **et Stripe** pour les paiements. La répartition envisagée est SasPay pour les moyens locaux africains et Stripe pour les cartes et l’Europe ; le routage exact reste à définir et à vérifier. Selon sa confirmation du 14 novembre 2026, le compte SasPay est **en attente de validation**. Le statut du compte Stripe n’est pas connu ; aucune intégration ni capacité technique des prestataires n’est encore vérifiée dans le projet.
+- **Tarif mensuel choisi le 15 novembre 2026 : 3 000 FCFA (XAF), avec le même prix en euros**. Équivalent arrondi au centime : **4,57 EUR** (1 EUR = 655,957 XAF). Le renouvellement manuel/automatique et la prise en charge des frais de paiement restent à définir. Aucun paiement réel n’est implémenté.
+- Les clients au Congo-Brazzaville doivent pouvoir payer avec **MTN Mobile Money et Airtel Money**. Leur disponibilité effective chez SasPay pour ce pays, ainsi que les versements vers la France, restent à vérifier. Ne pas confondre Congo-Brazzaville et RDC.
+- Selon le propriétaire, SasPay détecte le pays du client et propose le montant et les modes de paiement correspondants. Ce fonctionnement reste à vérifier dans la documentation et les tests du prestataire ; le tarif mensuel retenu est 3 000 XAF, soit 4,57 EUR après arrondi.
+- Période confirmée : un abonnement commencé le 10 expire le 10 du mois suivant. Si cette date n’existe pas dans le mois suivant (29–31), l’expiration tombe au dernier jour de ce mois : règle confirmée par le propriétaire. L’heure et le fuseau restent à définir.
+- L’accès au canal premium est accordé après confirmation du paiement.
 - Les packs d’épisodes et achats de saisons du document V2 ne sont pas l’offre retenue au lancement.
 - PostgreSQL/Supabase figuraient dans le plan V2 ; ils ne sont pas installés et aucune migration n’a été décidée ou réalisée.
 
-La prochaine discussion porte sur les **règles de paiement**, avant toute intégration technique. Voir [docs/payments.md](docs/payments.md).
+Le propriétaire a autorisé le démarrage de la mise en place le 15 novembre 2026. Le socle et la démonstration locale sont implémentés ; les encaissements restent fermés et plusieurs règles commerciales restent à définir. Voir [docs/payments.md](docs/payments.md).
 
 ## Identités et services
 
@@ -92,7 +96,7 @@ Anciennes erreurs corrigées : A Different World → 60 Minutes ; Let It Shine �
 - Routes API Next.js sous `src/app/api/telegram/` ; pas de backend séparé.
 - Redis REST Upstash en production. Hash : `the-browser:telegram:ID_DU_CANAL`.
 - Fichier local uniquement en développement sur une seule instance ; refus explicite du fichier comme stockage de production Vercel.
-- Aucun compte client, paiement, abonnement, canal privé payant, autorisation commerciale ou lecteur vidéo n’est encore implémenté.
+- Un socle Premium est implémenté : page `/premium`, tarifs serveur, échéance mensuelle avec fin de mois, confirmation idempotente et démonstration locale des paiements. Aucun compte client, encaissement réel, stockage durable d’abonnements, invitation/retrait du canal privé ou lecteur vidéo n’est implémenté. Le simulateur ne donne aucun accès Telegram et est désactivé en production. UTC est seulement la convention technique du prototype ; le fuseau commercial reste à confirmer.
 
 ## Fichiers et points d’entrée
 
@@ -153,16 +157,82 @@ Les nouveaux liens du catalogue utilisent les IDs déjà enregistrés : aucun r�
 - Les suppressions de messages ne sont pas transmises par la Bot API ; les liens peuvent devenir indisponibles si les publications sont supprimées.
 - La Bot API ne permet pas de relire l’historique du canal : l’export sert à l’amorçage.
 - Le bot actuel synchronise le catalogue ; il ne gère pas encore les comptes clients ni les adhésions payantes.
-- Les règles d’accès, d’invitation, d’expiration, de remboursement et de renouvellement du futur canal privé restent à concevoir.
+- L’accès après confirmation du paiement et l’échéance à la même date du mois suivant sont confirmés. Les mécanismes d’invitation/retrait, les remboursements et le renouvellement restent à concevoir. La règle du dernier jour du mois pour les dates absentes est confirmée.
 - Le document V2 prévoyait de vérifier les droits et territoires avant commercialisation. Cette vérification n’est pas établie par l’import ou l’existence du canal.
 - Si des ventes sont réalisées directement dans Telegram, vérifier les règles Telegram applicables aux biens numériques avant de choisir le parcours de paiement.
 
 ## Prochaine reprise
 
-1. Reprendre la définition des règles de paiement avec le propriétaire, sans démarrer d’intégration pendant le report demandé.
-2. Préciser quel Congo est concerné et faire présenter la solution de paiement qu’il possède déjà.
-3. Fixer prix/devise, durée exacte de la période mensuelle, renouvellement, échéances, activation, expiration et remboursements.
+1. Poursuivre la mise en place autorisée : le socle Premium et la simulation sont disponibles ; raccorder identité Telegram, stockage durable, prestataires et gestion des accès avant ouverture. Validation du socle : 80 tests, lint et build réussis ; huit scénarios HTTP simulés et désactivation en production vérifiés. Voir docs/payments.md pour les limites et la commande de démonstration.
+2. Suivre la validation du compte SasPay, préciser le statut du compte Stripe et vérifier les documentations officielles : pays couverts, MTN/Airtel au Congo-Brazzaville, cartes en Europe, versements vers la France et choix du prestataire selon le paiement. Ne pas supposer le renouvellement automatique disponible en Mobile Money.
+3. Définir la prise en charge des frais de paiement, le renouvellement, l’heure/le fuseau pour l’échéance mensuelle, retrait à expiration et remboursements.
 4. Définir le lien entre compte client, identité Telegram, paiement confirmé et accès au canal privé.
 5. Choisir ensuite les besoins de base de données et d’administration ; conserver le catalogue et la synchronisation existants.
 
 Mettre à jour cette mémoire après une décision ou livraison significative. Ne pas transformer une proposition ou une confirmation limitée à quelques messages en règle globale.
+
+## Reprise Stripe — 15 novembre 2026
+
+- Le propriétaire indique que le compte Stripe est prêt. Il a précisé le nom de sa clé : `STRIPE_SECRET_KEY_TEST`, à conserver pour la configuration de test. Aucune valeur de clé n’est enregistrée ici.
+- Les compétences officielles Stripe sont installées dans `.agents/skills/` et la CLI 1.55.11 dans `/workspace/.stripe-tools/bin/stripe`. Le planificateur CLI n’a pas pu charger son plugin, bloqué par le réseau vers `dashboard.stripe.com` ; le MCP reste non connecté. Aucun plan officiel accepté ni connecteur de paiement implémenté.
+- Le secret de test n’est pas injecté dans la machine lors du contrôle. L’exigence `STRIPE_SECRET_KEY_TEST` vers `api.stripe.com` et l’accès à `dashboard.stripe.com` ont été sauvegardés en brouillon, sans publication. La valeur n’est pas encore liée dans ce brouillon. Voir `docs/stripe-plan.md` pour la reprise ; ne pas demander la valeur dans le chat.
+
+### Dernier contrôle Stripe après publication — 15 novembre 2026
+
+`STRIPE_SECRET_KEY_TEST` est injectée ; l’appel de lecture seule à l’API Stripe renvoie `secret_key_required` et indique une clé publique. Remplacer la valeur sécurisée par une clé serveur de test avant de continuer. Aucun objet Stripe créé. Le téléchargement officiel du plugin CLI tools 0.20.0 est bloqué sur `stripe.jfrog.io`, domaine ajouté au nouveau brouillon sans publication. Le planner n’a pas encore produit de plan ; ces observations remplacent les anciens blocages d’injection de clé et d’accès à dashboard.stripe.com.
+
+### Contrôle Stripe suivant — 15 novembre 2026
+
+La valeur liée à `STRIPE_SECRET_KEY_TEST` a été corrigée : lecture seule de `/v1/balance` réussie, `livemode: false`. L’authentification serveur en mode test est vérifiée ; aucun objet Stripe créé ni paiement effectué. Le plugin CLI tools est maintenant bloqué uniquement au téléchargement redirigé vers `jfrog-prod-usw2-shared-oregon-main.s3.amazonaws.com`. Ce domaine a été ajouté au nouveau brouillon sans publication. Ces faits remplacent le précédent diagnostic de clé publique. Le plan officiel reste non généré.
+
+### Planificateur CLI installé — 15 novembre 2026
+
+Le plugin officiel Stripe tools 0.20.0 est installé avec `XDG_CONFIG_HOME=/workspace/.stripe-config`. Le planner refuse localement le marqueur de secret du proxy (`credential_resolution_failed`), bien que la clé réelle fonctionne pour l’API. La voie officielle de connexion navigateur `stripe login --non-interactive` exige `access.stripe.com`, domaine ajouté au brouillon sans publication. Le propriétaire a explicitement choisi de conserver le planificateur CLI plutôt que de passer cette étape. Après application du réseau, lancer la connexion, obtenir la validation du propriétaire via le lien officiel et suivre next_step. Ne pas contourner la validation des clés ni extraire le secret du proxy. Aucun plan accepté ni encaissement effectué.
+
+### Stripe : plan accepté et pilote implémenté — 15 novembre 2026
+
+La connexion officielle CLI a été approuvée en mode test. Le planner a généré et accepté le guide `iguide_61VlOAzo20DlZaZ8V41R1bnaGRieM` (`status: accepted`). La réponse officielle est dans `docs/stripe-plan.json` et les adaptations/limites dans `docs/stripe-plan.md`. Ces faits remplacent les anciens blocages de planification.
+
+SDK Stripe 23.1.0 ajouté. Parcours `/premium/stripe-test`, API checkout/webhook/status et commandes sur disque hors dépôt, strictement locaux, non exposés en production. Montant serveur 457 centimes EUR, idempotence de création, vérification de signature, mode test et session/commande/montant/devise, événements asynchrones et expiration. Le retour navigateur n’attribue rien. UTC reste une convention technique, sans reconduction automatique ni invitation Telegram.
+
+Validation : 86 tests, lint et build réussis. Vraies sessions de test créées/lues puis expirées sans débit, retry vers la même session, état rechargé depuis un processus distinct, webhook synthétique signé rapproché avec Stripe, routes fermées en production. La réception d’événements externes est encore bloquée par le réseau WebSocket sur `stripecli-ws-nw.stripe.com`, ajouté au nouveau brouillon sans publication. Paiement complet dans le navigateur non effectué. Pas d’encaissement réel ni de déploiement. Avant production : identité Telegram, stockage durable transactionnel, accès/retrait, règles commerciales et fiscalité. Les credentials OAuth restent hors dépôt, sous permissions restrictives ; ne jamais les imprimer.
+
+### Suite Premium : stockage durable préparé — 15 novembre 2026
+
+Le propriétaire confirme que les nouvelles saisons 7 à 12 de The Big Bang Theory apparaissent sur le site : la synchronisation fonctionne dans son observation. Il indiquait alors que le canal Premium privé n’était pas encore créé ; il a depuis confirmé sa création et l’ajout du bot comme administrateur (voir le dernier contrôle ci-dessous).
+
+Le module `src/lib/premium-redis.ts` prépare les commandes et confirmations atomiques sur Redis REST existant, isolées du catalogue public et entre test/réel. Identité Telegram numérique vérifiée exigée par le contrat d’appel ; session/paiement uniques ; confirmation idempotente ; aucun repli local. Pas encore raccordé aux routes ni à l’authentification : le pilote reste local, sans accès Telegram réel. Aucun renouvellement ou cumul anticipé inventé.
+
+90 tests habituels + 8 tests d’intégration sur un vrai Redis 7.4.6 isolé réussis, dont 24 confirmations concurrentes, refus de réutiliser un paiement, séparation test/réel et échéance exacte. Lint et build réussis. Détails et reproduction dans `docs/payments.md`. Aucun secret Redis/bot injecté dans cette machine ; ne pas supposer ceux de Vercel absents. Avant raccordement réel : créer le canal privé et configurer le bot, authentifier l’utilisateur, brancher ce stockage et valider la livraison des webhooks Stripe après application du domaine réseau déjà préparé. Aucune publication ni modification des données de production.
+
+### Canal privé créé et bot ajouté — 15 novembre 2026
+
+Le propriétaire confirme que le canal privé est créé et que @Thebrowser365_bot a été ajouté comme administrateur après demande des permissions d’invitation et de restriction. Ce sont ses confirmations, pas encore une vérification API. Le script `scripts/check-premium-channel.mjs` contrôle en lecture seule getMe/getChat/getChatMember, le caractère privé et distinct du canal public et les deux permissions ; il n’envoie aucun message, ne crée aucun lien et ne modifie aucun webhook.
+
+Le contrôle réel est bloqué par l’absence de `TELEGRAM_BOT_TOKEN` et `TELEGRAM_PREMIUM_CHANNEL_ID` dans cette machine. Le besoin de secret vers api.telegram.org et les variables d’identifiants ont été ajoutés au brouillon, sans publication. L’identifiant public suggéré reste -1004339801492. Les valeurs doivent être renseignées dans les paramètres sécurisés, pas dans le chat. 94 tests habituels et lint réussis ; le script a été testé avec des réponses API simulées, pas avec le canal réel.
+
+### Canal Premium vérifié par API — 15 novembre 2026
+
+Après publication, `NODE_USE_ENV_PROXY=1 node scripts/check-premium-channel.mjs` réussit. Le bot @Thebrowser365_bot est administrateur du canal privé `-1003958043288`, distinct du canal public ; `can_invite_users` et `can_restrict_members` sont tous deux vrais. Le résultat indique `ready: true`. La vérification a utilisé uniquement getMe/getChat/getChatMember : aucun message envoyé, aucune invitation créée et aucun webhook modifié. Cette observation remplace l’ancien statut de permissions non vérifiées. La connexion de l’identité client au site et le raccordement des abonnements restent à réaliser.
+
+### Identité Telegram et commandes Redis raccordées dans le code — 15 novembre 2026
+
+Suite à « fais le », la connexion via lien temporaire du bot et confirmation privée explicite est implémentée. Les sessions navigateur sont aléatoires, HttpOnly, SameSite=Lax et Secure en HTTPS, hachées dans Redis ; demande valable dix minutes, code consommé une fois, compte confirmant identique à celui de la demande, session révocable de 24h. Origine des POST contrôlée par SITE_URL ; données test/réel séparées. Le bot utilise le webhook existant après vérification de son secret ; le script de configuration ajoute seulement les types nécessaires lorsque le drapeau est activé.
+
+Les routes Stripe de test imposent cette identité, utilisent désormais Redis pour les commandes et confirmations atomiques, et réservent la consultation au propriétaire. Le prix et l’identité JSON client sont ignorés. L’ancien stockage fichier a été retiré ; aucun ancien fichier de données de la machine n’a été supprimé. Les invités et retraits réels du canal ne sont pas encore implémentés.
+
+99 tests habituels + 12 tests Redis réel + 1 test HTTP de bout en bout avec Next.js/Redis réel et API Stripe simulée réussis, lint et build réussis. Le test confirme aussi la réception du canal public. Aucun message Telegram réel, aucune modification de webhook, aucun déploiement, aucun encaissement réel effectué. Le parcours réel attend les accès Redis et le déploiement du code ; le propriétaire ne sait pas encore retrouver l’adresse de sa base, le guider dans Vercel/Upstash sans demander le jeton dans le chat. Le brouillon déclare SITE_URL, PREMIUM_ENVIRONMENT=test, PREMIUM_TELEGRAM_AUTH_ENABLED=0 et KV_REST_API_URL ; ne pas activer le drapeau avant le déploiement et la configuration. Voir docs/payments.md pour l’ordre précis.
+
+### Adresse Redis configurée — 15 novembre 2026
+
+Après publication, KV_REST_API_URL est injectée et pointe vers poetic-martin-248299.upstash.io. KV_REST_API_TOKEN n’est présent ni dans le processus ni parmi les liaisons de secrets actives lors du contrôle. Le diagnostic de stockage échoue donc avant tout appel Redis ; aucune donnée n’a été lue ou modifiée. Le besoin de secret KV_REST_API_TOKEN vers ce seul hôte a été ajouté au nouveau brouillon, sans publication. Le propriétaire doit y associer le REST TOKEN depuis Upstash via les paramètres sécurisés, jamais dans le chat. Reprendre ensuite scripts/check-premium-storage.mjs en lecture seule.
+
+### Redis accessible après configuration du jeton — 15 novembre 2026
+
+Après publication, le diagnostic `NODE_USE_ENV_PROXY=1 node scripts/check-premium-storage.mjs` réussit : ready=true, environment=test, read=true, scripting=true, writes=false. L’authentification Redis REST et l’exécution d’un script Lua de lecture sont donc vérifiées sur la base configurée, sans modification des données. Ce résultat remplace le blocage du jeton manquant. Le nouveau code applicatif reste à déployer sur Vercel avant activation de la connexion Telegram et ajustement additif des notifications du webhook. Aucun paiement ni accès Premium réel activé.
+
+### Déploiement demandé — 15 novembre 2026
+
+Le propriétaire a explicitement demandé de déployer puis vérifier le parcours. Le dépôt de travail est synchronisé avec origin/main avant les nouveaux commits ; le test de permission de push est réussi (dry-run, sans création de branche distante). Les changements applicatifs doivent être poussés sur main pour l’intégration Git Vercel existante, en gardant les paiements réels fermés et l’authentification désactivée tant que ses paramètres Vercel ne sont pas vérifiés. Les compétences/outils locaux `.agents/` et `skills-lock.json` ne font pas partie du code à déployer.
+
+Le réseau de la machine bloque encore api.github.com et the-browser-one.vercel.app ; ces deux domaines ont été ajoutés au nouveau brouillon pour le suivi du déploiement. Sauvegarde du brouillon seulement, sans publication par l’agent. Une poussée Git ne constitue pas à elle seule la preuve d’une compilation ou d’un déploiement Vercel réussi. L’activation réelle de la connexion demande les paramètres Vercel et le secret existant du webhook Telegram ; ce secret n’est pas injecté ici.
