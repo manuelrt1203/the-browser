@@ -5,7 +5,7 @@ import { saspayTestClient,sasPayCustomer,verifySasPaySignature,verifiedSasPayRes
 import { createPremiumOrder } from '../src/lib/subscription.ts';
 
 const customer={firstName:'Test',lastName:'Client',email:'client@example.com',phone:'+242061234567',network:'fixture_mtn_cg'};
-test('SasPay : aucune clé réelle ou marqueur proxy ne peut initier un paiement de test',()=>{
+test('SasPay : clés live et marqueurs proxy refusés en complément du domaine sandbox',()=>{
   for(const key of ['', 'sk_live_not_a_real_fixture_key','proxy_placeholder_fixture'])assert.throws(()=>saspayTestClient(key));
 });
 test('SasPay : identité client et numéro Congo-Brazzaville obligatoires',()=>{
@@ -27,9 +27,11 @@ test('SasPay : montant demandé exact, devise, sens entrant et paiement rapproch
   assert.equal(verifiedSasPayResult(order,{...payment,status:'FAILED'}).status,'failed');
 });
 test('SasPay : référentiel réel filtré par pays et réseau actif, prix serveur et idempotence',async()=>{
-  const old=globalThis.fetch;const country=randomUUID(),paymentId=randomUUID(),order=randomUUID();let initiation;let redirect='https://pay.saspay.me/checkout/fixture';
+  const old=globalThis.fetch;const country=randomUUID(),paymentId=randomUUID(),order=randomUUID();let initiation;let redirect='https://sandbox-checkout.saspay.me/checkout/fixture';
   try{
     globalThis.fetch=async(url,options)=>{
+      assert.equal(new URL(url).origin,'https://sandbox-api.saspay.me');
+      assert.equal(options.redirect,'error');
       if(url.endsWith('/countries/'))return Response.json({success:true,data:[{id:country,iso_code:'CG',is_active:true,default_currency:'XAF'}]});
       if(url.includes('/networks/'))return Response.json({success:true,data:{next:null,results:[
         {country,code:'fixture_mtn_cg',name:'MTN',is_active:true},
@@ -43,7 +45,9 @@ test('SasPay : référentiel réel filtré par pays et réseau actif, prix serve
     assert.equal(initiation.body.amount,'3000');assert.equal(initiation.body.currency,'XAF');assert.equal(initiation.body.country,'CG');
     assert.equal(initiation.headers['Idempotency-Key'],`the-browser-saspay-test-${order}`);
     await assert.rejects(()=>client.initiate(order,{...customer,network:'fixture_mtn_cd'}));
-    redirect='https://attacker.example/checkout';await assert.rejects(()=>client.initiate(order,customer),e=>e.code==='REDIRECT_UNSUPPORTED');
+    for (const forbidden of ['https://pay.saspay.me/checkout','https://attacker.example/checkout','http://sandbox-checkout.saspay.me/checkout']) {
+      redirect=forbidden;await assert.rejects(()=>client.initiate(order,customer),e=>e.code==='REDIRECT_UNSUPPORTED');
+    }
   }finally{globalThis.fetch=old;}
 });
 test('SasPay : erreurs prestataire expurgées',async()=>{

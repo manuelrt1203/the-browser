@@ -32,7 +32,7 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
         TELEGRAM_CHANNEL_ID:'-1004339801492',TELEGRAM_WEBHOOK_SECRET:'telegram_fixture_secret',
         TELEGRAM_WEBHOOK_SECRET_NEXT:'telegram_fixture_next_secret',
         STRIPE_TEST_CHECKOUT_ENABLED:'1',STRIPE_SECRET_KEY_TEST:'sk_test_fixture_not_a_real_key',STRIPE_WEBHOOK_SECRET:webhookSecret,
-        SASPAY_TEST_ENABLED:'1',SASPAY_API_KEY_TEST:'sk_test_fixture_not_a_real_key',SASPAY_WEBHOOK_SECRET:'saspay_local_fixture_secret',
+        PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SASPAY_TEST_ENABLED:'1',SASPAY_API_KEY_TEST:'sk_test_fixture_not_a_real_key',SASPAY_WEBHOOK_SECRET_TEST:'saspay_local_fixture_secret',SASPAY_WEBHOOK_SECRET:'saspay_live_fixture_never_use',
         VERCEL:'',NODE_USE_ENV_PROXY:'0',NODE_OPTIONS:''},stdio:['ignore','pipe','pipe']});
     for(const stream of [app.stdout,app.stderr])stream.on('data',chunk=>{logs=(logs+chunk.toString()).slice(-16000);});
     ready=false;
@@ -73,6 +73,8 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
     assert.equal((await send()).status,200);
     assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:test}:order:${orderId}`])).expiresAt,paid.expiresAt);
     const networks=await fetch(origin+'/api/saspay/test/networks',{headers:{cookie}}).then(r=>r.json());assert.equal(networks.networks.length,2);
+    assert.equal((await post('/api/premium/access',{}, {cookie})).status,404,'un paiement test ne permet jamais une invitation réelle');
+    assert.equal((await post('/api/premium/access/expire',{})).status,404,'aucun retrait réel depuis le pilote test');
     const sasOrder=randomUUID();const customer={firstName:'Test',lastName:'Client',email:'client@example.com',phone:'+242061234567',network:'fixture_mtn_cg',amount:1,telegramUserId:'54321'};
     const sasResponse=await post('/api/saspay/test/payment',customer,{cookie,'idempotency-key':sasOrder});assert.equal(sasResponse.status,200);const sas=await sasResponse.json();assert.equal(sas.status,'pending');
     const sasReplay=await post('/api/saspay/test/payment',customer,{cookie,'idempotency-key':sasOrder}).then(r=>r.json());assert.equal(sasReplay.checkoutUrl,sas.checkoutUrl);
@@ -81,6 +83,8 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
     const sasBody=JSON.stringify({event:'transaction.success',data:{id:storedSas.providerSessionId,status:'SUCCESS'}});const timestamp=String(Math.floor(Date.now()/1000));
     const sasSignature=createHmac('sha256','saspay_local_fixture_secret').update(`${timestamp}.${sasBody}`).digest('hex');
     const sendSas=(body=sasBody)=>fetch(origin+'/api/saspay/test/webhook',{method:'POST',headers:{'x-webhook-signature':sasSignature,'x-webhook-timestamp':timestamp,'x-webhook-event':'transaction.success'},body});
+    const liveSignature=createHmac('sha256','saspay_live_fixture_never_use').update(`${timestamp}.${sasBody}`).digest('hex');
+    assert.equal((await fetch(origin+'/api/saspay/test/webhook',{method:'POST',headers:{'x-webhook-signature':liveSignature,'x-webhook-timestamp':timestamp,'x-webhook-event':'transaction.success'},body:sasBody})).status,400,'le secret live ne doit pas authentifier un webhook test');
     assert.equal((await sendSas(sasBody+' ')).status,400);assert.equal((await sendSas()).status,200);
     assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:test}:order:${sasOrder}`])).status,'pending','un webhook succès ne remplace pas la vérification prestataire');
     // Simulate a crash after the provider push but before local payment binding.

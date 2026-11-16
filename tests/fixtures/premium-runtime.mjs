@@ -35,14 +35,14 @@ globalThis.fetch = async (input, options = {}) => {
     if (sessions.has(id)) return Response.json(sessions.get(id));
     return Response.json({error:{type:'invalid_request_error',message:'Unknown test session'}},{status:404});
   }
-  if(url.hostname==='api.saspay.me'){
+  if(url.hostname==='sandbox-api.saspay.me'){
     if(url.pathname.endsWith('/countries/'))return Response.json({success:true,data:[{id:sasPayCountry,iso_code:'CG',name:'Congo',default_currency:'XAF',is_active:true}]});
     if(url.pathname.endsWith('/networks/'))return Response.json({success:true,data:{next:null,results:[{country:sasPayCountry,name:'MTN',code:'fixture_mtn_cg',is_active:true},{country:sasPayCountry,name:'Airtel',code:'fixture_airtel_cg',is_active:true}]}});
     if(url.pathname.endsWith('/payments/softpay/')){
       const body=JSON.parse(options.body);const key=options.headers['Idempotency-Key'];
       let payment=payments.get(key);
       if(!payment){payment={id:randomUUID(),status:'PENDING',currency:body.currency,requested_amount:body.amount,description:body.description,transaction_type:'PAIEMENT',flow_direction:'INBOUND',updated_at:'2026-11-16T10:00:00Z'};payments.set(key,payment);payments.set(payment.id,payment);}
-      return Response.json({success:true,data:{id:payment.id,status:'PENDING',checkout_url:`https://pay.saspay.me/checkout/${payment.id}`}});
+      return Response.json({success:true,data:{id:payment.id,status:'PENDING',checkout_url:`https://sandbox-checkout.saspay.me/checkout/${payment.id}`}});
     }
     const match=url.pathname.match(/\/payments\/([^/]+)\/verify\/$/);
     if(match&&payments.has(match[1])){

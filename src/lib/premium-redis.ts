@@ -36,6 +36,7 @@ return 'OK'
 `;
 
 const CONFIRM = `
+if #KEYS > 3 and redis.call('EXISTS', KEYS[4]) == 1 then return 'ACCESS_BUSY' end
 local current = redis.call('GET', KEYS[1])
 if not current then return 'MISSING' end
 if current ~= ARGV[1] then return 'RETRY' end
@@ -104,7 +105,7 @@ export function premiumRedis(environment: "test" | "live") {
       if (value.providerSessionId !== undefined) providerIdentifier(value.providerSessionId);
       if (value.providerCheckoutUrl !== undefined) {
         const url = new URL(value.providerCheckoutUrl);
-        if (value.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== "pay.saspay.me" || url.username || url.password || url.port) throw new Error();
+        if (value.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) throw new Error();
       }
       if (value.status === "confirmed" && (!value.providerSessionId || !value.confirmedPaymentId || !value.startsAt || !value.expiresAt ||
           !Number.isFinite(Date.parse(value.startsAt)) || !Number.isFinite(Date.parse(value.expiresAt)) ||
@@ -147,7 +148,7 @@ export function premiumRedis(environment: "test" | "live") {
       if (current.order.providerSessionId && current.order.providerSessionId !== sessionId) throw new PremiumStorageError("SESSION_CONFLICT");
       if (checkoutUrl !== undefined) {
         const url = new URL(checkoutUrl);
-        if (current.order.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== "pay.saspay.me" || url.username || url.password || url.port) throw new PremiumStorageError("REDIRECT");
+        if (current.order.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) throw new PremiumStorageError("REDIRECT");
         if (current.order.providerCheckoutUrl && current.order.providerCheckoutUrl !== checkoutUrl) throw new PremiumStorageError("SESSION_CONFLICT");
       }
       const updated = { ...current.order, providerSessionId: sessionId,
@@ -174,8 +175,9 @@ export function premiumRedis(environment: "test" | "live") {
       try {
         updated = { ...current.order, ...confirmPremiumPayment(current.order, { ...input, orderId: input.orderId }) };
       } catch { throw new PremiumStorageError("PAYMENT_MISMATCH"); }
-      const result = await command(["EVAL", CONFIRM, 3, orderKey(input.orderId),
-        `${prefix}:payment:${input.provider}:${input.paymentId}`, sessionKey(input.provider, input.sessionId),
+      const accessLock = environment === "live" ? [`${prefix}:channel-access:lock:${current.order.telegramUserId}`] : [];
+      const result = await command(["EVAL", CONFIRM, 3 + accessLock.length, orderKey(input.orderId),
+        `${prefix}:payment:${input.provider}:${input.paymentId}`, sessionKey(input.provider, input.sessionId), ...accessLock,
         current.raw, JSON.stringify(updated), input.orderId]);
       if (result === "RETRY") continue;
       if (result !== "OK") throw new PremiumStorageError(String(result));

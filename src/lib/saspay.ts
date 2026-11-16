@@ -3,7 +3,7 @@ import { PREMIUM_OFFERS } from "./subscription.ts";
 import type { StoredPremiumOrder } from "./premium-redis.ts";
 import { paymentTestRuntime } from "./payment-test-runtime.ts";
 
-const API = "https://api.saspay.me/api/v1";
+const API = "https://sandbox-api.saspay.me/api/v1";
 export const sasPayOrderDescription = (orderId: string) => `The Browser Premium test — commande ${orderId}`;
 export class SasPayError extends Error {
   readonly code: string;
@@ -17,8 +17,9 @@ export function sasPayId(value: unknown): value is string {
 }
 
 export function saspayTestClient(key = process.env.SASPAY_API_KEY_TEST ?? "") {
-  // SasPay has no documented key-mode introspection. Fail closed, including on a
-  // proxy placeholder, rather than accidentally sending a live Mobile Money push.
+  // The sandbox hostname, not the key prefix, prevents real payments.
+  // Keep the base fixed and reject redirects, including redirects to production.
+  // Reject live labels and proxy placeholders as an additional configuration check.
   if (!key.startsWith("sk_test_") || key.length < 16) throw new SasPayError("TEST_KEY_REQUIRED");
   async function request(path: string, body?: unknown, idempotencyKey?: string): Promise<unknown> {
     let response;
@@ -27,7 +28,7 @@ export function saspayTestClient(key = process.env.SASPAY_API_KEY_TEST ?? "") {
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json",
           ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        cache: "no-store", signal: AbortSignal.timeout(20_000) });
+        cache: "no-store", redirect: "error", signal: AbortSignal.timeout(20_000) });
     } catch { throw new SasPayError("NETWORK"); }
     let data;
     try { data = await response.json(); } catch { throw new SasPayError("RESPONSE"); }
@@ -69,7 +70,7 @@ export function saspayTestClient(key = process.env.SASPAY_API_KEY_TEST ?? "") {
     let checkoutUrl: string | null = null;
     if (data.checkout_url) {
       const url = new URL(data.checkout_url);
-      if (url.protocol !== "https:" || url.hostname !== "pay.saspay.me" || url.username || url.password || url.port) {
+      if (url.protocol !== "https:" || url.hostname !== "sandbox-checkout.saspay.me" || url.username || url.password || url.port) {
         throw new SasPayError("REDIRECT_UNSUPPORTED");
       }
       checkoutUrl = url.toString();

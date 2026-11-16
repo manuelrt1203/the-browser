@@ -1,0 +1,37 @@
+name: Premium membership expiration
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  id-token: write
+concurrency:
+  group: premium-expiration
+  cancel-in-progress: false
+jobs:
+  expire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check expired memberships
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 30 \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fthe-browser-one.vercel.app%2Fapi%2Fpremium%2Faccess%2Fexpire" \
+            --output identity.json
+          ACCESS_TOKEN=$(python3 -c 'import json; print(json.load(open("identity.json"))["value"])')
+          echo "::add-mask::$ACCESS_TOKEN"
+          rm identity.json
+          cursor=0
+          for batch in $(seq 1 100); do
+            curl --fail --silent --show-error --max-time 60 \
+              --request POST --header "Authorization: Bearer $ACCESS_TOKEN" \
+              "https://the-browser-one.vercel.app/api/premium/access/expire?cursor=$cursor" \
+              --output response.json
+            cursor=$(python3 -c 'import json; d=json.load(open("response.json")); c=d["cursor"]; assert isinstance(c,str) and c.isdigit(); assert d["failed"] == 0, "Membership actions need retry"; print(c)')
+            if [ "$cursor" = 0 ]; then exit 0; fi
+          done
+          echo 'Batch limit reached; inspection required.'
+          exit 1

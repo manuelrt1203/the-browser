@@ -2,6 +2,10 @@
 
 Mise à jour : 16 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
+## Correction SasPay sandbox — 16 novembre 2026
+
+La documentation officielle https://docs.saspay.me/sandbox annonce encore « Bientôt disponible » et exige un compte sandbox séparé. Le préfixe sk_test_ est une étiquette : une clé ainsi nommée sur api.saspay.me peut traiter de l’argent réel. Le conseil précédent consistant à créer simplement une clé SANDBOX dans le compte de production est insuffisant et remplacé par cette consigne. Le pilote appelle désormais exclusivement sandbox-api.saspay.me, interdit les redirections HTTP et limite ses checkouts à sandbox-checkout.saspay.me (y compris le stockage Redis test). Aucun repli production. La disponibilité du service et les vrais scénarios restent à vérifier ; aucun appel SasPay authentifié effectué. Validation : 109 tests, parcours HTTP Next.js/Redis avec prestataires simulés, lint et build réussis. Correction locale, non publiée.
+
 ## Point de reprise — travail repris le 16 novembre 2026
 
 Le propriétaire a explicitement demandé de reprendre le travail le 16 novembre 2026. La pause est levée. Conserver les paiements réels fermés et vérifier le déploiement avant toute activation de la connexion Telegram. Ce résumé décrit le dernier état ; les sections chronologiques plus bas conservent les anciens blocages, parfois déjà résolus.
@@ -289,3 +293,85 @@ Le propriétaire confirme ne pas pouvoir récupérer TELEGRAM_WEBHOOK_SECRET et 
 Le code accepte une valeur NEXT temporaire en plus de la valeur actuelle, y compris pour le diagnostic et la revalidation. Le script de bascule exige --register --rotate-secret et vérifie l’acceptation du nouveau secret par le site avant toute écriture Telegram. Un nouveau secret aléatoire est préparé dans /workspace/.premium-telegram-rotation.json, hors dépôt, mode 600, applied=false ; ne jamais afficher ce fichier ou sa valeur. Le lire seulement dans le code qui configurera les services autorisés. Ne pas supposer la rotation appliquée : aucune valeur Vercel, aucun webhook et aucun membre n’ont été modifiés. Tests unitaires (109), intégration HTTP, lint et build réussis après correction du protocole RESP2 de l’adaptateur Redis de test pour le diagnostic HGETALL.
 
 Le propriétaire propose la création de clé SasPay via merchant-api-keys : la documentation confirme environment=SANDBOX, scope=PAYIN pour notre usage. Elle exige le JWT de connexion dashboard, pas la clé sk_live ; ne pas demander le JWT ou une clé dans le chat. Le secret sk_test retourné n’est visible qu’une fois et devra être enregistré dans les paramètres sécurisés SASPAY_API_KEY_TEST. Aucun appel de création de clé n’a été effectué.
+
+## Skill SasPay installée — 16 novembre 2026
+
+Fichier fourni par le propriétaire installé sans modification dans `.agents/skills/saspay-integration/SKILL.md` (nom déclaré : `saspay-integration`). Installation locale uniquement, sans publication. Ses exemples utilisant api.saspay.me avec sk_test_ ne remplacent pas la décision sandbox ci-dessus : conserver sandbox-api.saspay.me et aucun repli production. La compétence constitue une référence technique, pas une autorisation de paiement, de retrait ou de mise en production.
+
+## Connexion Vercel réussie — 16 novembre 2026
+
+CLI 65.16.0 installée dans /workspace/.vercel-tools/bin, session OAuth vérifiée avec whoami. Projet existant manuels-projects-d0a3bea0/the-browser lié localement. Variables Production Telegram/Redis/TMDB présentes (noms uniquement inspectés). link a créé .env.local ignoré, mode 600, avec jeton OIDC ; ne jamais afficher son contenu. Compétences officielles vercel-labs/agent-skills installées localement après échec du plugin (dossier utilisateur non modifiable). MCP global vercel configuré dans /home/agent/.codex/config.toml après autorisation du système ; OAuth non réalisé et list_teams non testé : mcp.vercel.com refusé par le proxy. Domaine ajouté au nouveau brouillon, pas publié. Aucun déploiement, paiement ni changement du webhook effectué. Les variables Premium ne sont pas encore configurées sur Vercel.
+
+### OAuth MCP Vercel terminé — 16 novembre 2026
+
+La redirection OAuth a été transmise au processus CLI local et celui-ci confirme Successfully logged in to MCP server vercel. Cette réussite remplace le blocage réseau/OAuth précédent. Les outils MCP ne sont pas encore exposés dans le chat courant ; search_vercel_documentation et list_teams restent non vérifiés. Ne pas confondre la connexion réussie avec un test des outils. Aucun déploiement ni changement du webhook effectué. Aucun code OAuth ni credential enregistré dans la mémoire.
+
+### Compte sandbox confirmé par le propriétaire — 16 novembre 2026
+
+Le propriétaire confirme un compte sandbox séparé et une clé enregistrée sous SASPAY_API_KEY_TEST. Présence de la variable vérifiée sans affichage de sa valeur ; elle ne figurait pas parmi les secrets proxy listés. Aucun test authentifié réalisé : sandbox-api.saspay.me est refusé par le proxy (CONNECT 403). sandbox-api.saspay.me et sandbox-checkout.saspay.me ajoutés au brouillon, sans publication. Ne pas redemander une nouvelle clé ni basculer sur api.saspay.me.
+
+### SasPay sandbox accessible et clé vérifiée — 16 novembre 2026
+
+Requêtes backend de lecture sur https://sandbox-api.saspay.me/api/v1 : /countries/ et /pricing/my-rates/ répondent HTTP 200 success=true. Le connecteur saspayTestClient().networks() fonctionne avec la clé configurée et renvoie les réseaux actifs CG airtel_cg (Airtel Congo Brazzaville) et mtn_cg (MTN Congo Brazzaville). Cela remplace le précédent blocage réseau et valide la lecture authentifiée du sandbox ; pas un encaissement, ni une preuve de disponibilité production. Aucune création de paiement ni changement du webhook effectué. Scénarios sandbox et livraison webhook restent à tester.
+
+### Essais externes SasPay sandbox — 16 novembre 2026
+
+Tests autorisés sur sandbox-api.saspay.me uniquement, données client fictives +242, montant serveur 3000 XAF. MTN numéro finissant par 0 : création réussie, verify SUCCESS, rapprochement strict verifiedSasPayResult confirmé (montant/type/sens/description/date). Airtel finissant par 1 et MTN finissant par 2 : softpay renvoie HTTP 422, success=false, code client_fault, sans ID à vérifier dans cette réponse ; ne pas prétendre avoir observé verify FAILED ou un code spécifique solde insuffisant. Airtel finissant par 9 : création HTTP 201 PENDING, verify HTTP 200 PENDING. Ce dernier statut observé ne prouve pas une attente indéfinie. Les requêtes diagnostiques ont utilisé de nouvelles intentions/idempotency keys, pas des retries aveugles. Aucun paiement réel, droit Redis/Telegram, invitation, déploiement ni changement de webhook. Livraison externe du webhook et parcours navigateur restent non vérifiés.
+
+### Séparation des secrets webhook SasPay — 16 novembre 2026
+
+Le propriétaire confirme avoir enregistré les secrets test et live. Le pilote utilise exclusivement SASPAY_WEBHOOK_SECRET_TEST, pour la réception du webhook et le prérequis de création du paiement. SASPAY_WEBHOOK_SECRET reste réservé au live et ne sert jamais de repli pour les tests. Exemple de configuration et documentation actualisés. Modification locale, sans publication ni changement de webhook distant.
+
+### Prévisualisation SasPay déployée — 16 novembre 2026
+
+Vercel CLI OAuth vérifiée. Variables SASPAY_API_KEY_TEST et SASPAY_WEBHOOK_SECRET_TEST transférées sans affichage vers Preview uniquement ; PREMIUM_ENVIRONMENT=test, SASPAY_TEST_ENABLED=1 et PREMIUM_TELEGRAM_AUTH_ENABLED=0 configurés pour Preview. Production inchangée. Déploiement dpl_aaWaDCWbGjiPq4UgEdXASP9UsQDA confirmé Ready sur https://the-browser-ct93diwel-manuels-projects-d0a3bea0.vercel.app. .vercelignore ajouté pour exclure compétences locales et fichiers .env du transfert (inspection dry : 85 fichiers). Le projet protège les previews (ssoProtection all_except_custom_domains). Une exception ciblée pour ce domaine est nécessaire avant réception des webhooks ; protection non modifiée. Domaine ajouté au brouillon réseau cloud, pas publié. La requête webhook depuis cloud reste bloquée CONNECT 403, donc pas de livraison externe validée. Connexion Telegram désactivée dans la preview jusqu’à configuration coordonnée ; pas d’accès premium réel. Prochaine action : exception Vercel pour ce seul domaine et application réseau cloud, puis test webhook signé et livraison SasPay.
+
+### Réception webhook test vérifiée et URL SasPay à corriger — 16 novembre 2026
+
+La prévisualisation est accessible : POST webhook.test signé localement avec SASPAY_WEBHOOK_SECRET_TEST renvoie HTTP 200 ; mauvaise signature HTTP 400. Ce test est synthétique, pas une livraison SasPay. Lecture du compte sandbox : un webhook actif SANDBOX vise https://the-browser-one.vercel.app/webhooks/saspay, différent de la route déployée. 12 abonnements et zéro journal renvoyés par les listes consultées. Le propriétaire doit modifier l’URL depuis le tableau de bord sandbox vers https://the-browser-ct93diwel-manuels-projects-d0a3bea0.vercel.app/api/saspay/test/webhook ; création/modification non disponible par clé API selon documentation. Ne pas toucher au webhook live ni régénérer le secret pour une simple modification URL. Aucune configuration distante changée pendant ce contrôle.
+
+### Webhook SasPay recréé : livraison reçue mais signature refusée — 16 novembre 2026
+
+Le propriétaire a supprimé/recréé le webhook et indique publication. Lecture sandbox : webhook actif SANDBOX à l’URL de preview attendue. Signature synthétique avec la variable cloud SASPAY_WEBHOOK_SECRET_TEST acceptée HTTP 200 par le déploiement actuel. Nouveau paiement sandbox MTN SUCCESS vérifié, sans droits ni commande Redis créée. Journaux SasPay transaction.created/success de ce paiement : cible correcte, HTTP 400, réponse indiquant erreur de signature/horodatage. La livraison externe atteint donc l’application mais n’est pas authentifiée ; ne pas annoncer réussite. Hypothèse principale : signing_secret du webhook recréé différent de la valeur cloud/déploiement (celle-ci fonctionne toujours en test synthétique). Confirmer l’enregistrement sécurisé de la nouvelle valeur TEST avant synchronisation Vercel/redéploiement ; autre hypothèse à contrôler si les secrets concordent : format de signature fournisseur. Aucune désactivation du contrôle, aucune configuration live changée.
+
+### Contrôle après confirmation du nouveau secret — 16 novembre 2026
+
+Le propriétaire reconfirme secret et URL. Le secret actuellement injecté est accepté par le déploiement existant (webhook.test synthétique HTTP 200), donc aucune désynchronisation cloud/Vercel observée ; ne pas demander de ressaisir le secret sans nouvel élément. Nouveau paiement sandbox MTN vérifié SUCCESS ; notifications externes transaction.created/success encore HTTP 400. Documentation webhooks officielle relue : HMAC-SHA256(secret brut, timestamp.corps brut), conforme au code. Cause non établie : divergence avec le signing_secret actif SasPay, headers/horodatage ou signature émise. Ne pas attribuer avec certitude un bug fournisseur ni désactiver les contrôles. Un diagnostic des en-têtes reçus ou vérification SasPay est nécessaire. Pas de redéploiement ni rotation supplémentaire effectué.
+
+### Diagnostic signature : limite des journaux et rapport préparé — 16 novembre 2026
+
+Détail GET /webhook-logs/{id}/ consulté : pas de request_headers ni signature/timestamp. Valeur cloud du secret sans espaces de bord ni guillemets ajoutés, sans affichage de valeur. Rapport sans secrets préparé dans docs/saspay-support-signature.md pour vérification fournisseur. Aucun message externe envoyé. Cause toujours indéterminée ; pas de changement de signature, rotation ou déploiement arbitraire.
+
+### Connexion Telegram activée et webhook basculé — 16 novembre 2026
+
+Le propriétaire autorise la configuration Telegram puis le parcours Stripe test. Production existante f3fdeda confirmée Ready avant action. Paramètres Production SITE_URL=https://the-browser-one.vercel.app, PREMIUM_ENVIRONMENT=test, PREMIUM_TELEGRAM_AUTH_ENABLED=1 et canal Premium configurés. Déploiement dpl_8Mx3WFoygXhPtVWZtAeF5uqMFTBm réussi. Nouveau secret NEXT accepté par diagnostic avant setWebhook. Script --register --rotate-secret effectué : URL publique inchangée, drop_pending_updates=false, anciennes souscriptions préservées, message/callback_query ajoutés. getWebhookInfo confirme zéro attente et aucune erreur. Tests HTTP réels : session anonyme 200, start 200 avec lien bot correct et cookie HttpOnly, logout 200 ; Stripe/SasPay test POST restent 404 en Production. Aucune confirmation de compte utilisateur simulée, aucun paiement réel ou invitation/retrait.
+
+Secret principal Vercel mis à jour avec la nouvelle valeur, NEXT retiré du paramétrage ; redéploiement de nettoyage dpl_DgtC45njGBj5z9Nq7zF4S11orAUZ lancé. Secret conservé hors dépôt dans /workspace/.premium-telegram-rotation.json (applied=true). Ne jamais afficher ce fichier. L’utilisateur doit encore effectuer Démarrer/Confirmer ma connexion depuis /premium ; validation complète humaine non réalisée. Stripe navigateur reste à préparer ensuite sur une prévisualisation configurée, pas sur les routes de test fermées en Production.
+
+Le déploiement de nettoyage dpl_DgtC45njGBj5z9Nq7zF4S11orAUZ est confirmé Ready et affecté au domaine public. L’ancien secret n’est plus dans la configuration Production ; seul le nouveau secret principal subsiste.
+
+### Confirmation Telegram humaine vérifiée — 16 novembre 2026
+
+Le propriétaire indique avoir confirmé. Lecture Redis par SCAN/GET sans affichage des identifiants : une session test connected, zéro pending. Connexion Telegram réelle validée côté serveur. Préparation Stripe : Vercel Preview ne contient ni STRIPE_SECRET_KEY_TEST ni STRIPE_WEBHOOK_SECRET. Variable cloud STRIPE_SECRET_KEY_TEST présente mais proxy-backed (pas une clé brute sk_test_), ne pas copier ce marqueur vers Vercel ni extraire la clé du proxy. Demander la configuration de la clé Stripe test directement dans les paramètres sécurisés Vercel Preview, pas dans le chat. Aucun paiement Stripe navigateur encore validé.
+
+### Stripe Preview configuré — 16 novembre 2026
+
+La clé ajoutée par le propriétaire était affectée à Production. Affectation changée par PATCH Vercel target=[preview], sans lire/afficher sa valeur. Alias stable réservé : the-browser-premium-test-manuels-projects-d0a3bea0.vercel.app. Webhook Stripe test we_1UcWl5R1bnaGRieMQoPpuGta créé avec la clé cloud après balance livemode=false, événements checkout.session.completed/async_payment_succeeded/async_payment_failed/expired ; secret hors dépôt dans /workspace/.stripe-preview-webhook.json, mode600, puis configuré comme STRIPE_WEBHOOK_SECRET dans Vercel Preview. SITE_URL de l’alias, STRIPE_TEST_CHECKOUT_ENABLED=1 et PREMIUM_TELEGRAM_AUTH_ENABLED=1 configurés en Preview. Même base Redis et bot public pour la confirmation Telegram, cookies séparés par origine. Pas de partage de session navigateur automatique entre site public et preview.
+
+Redéploiement preview dpl_9jL7y9wgoeLRV3NuJcGcXBiwdwZt lancé depuis la source du pilote SasPay existant ; attente Ready puis alias. Domaine stable ajouté au brouillon réseau cloud, non publié. L’exception de protection Vercel de l’ancien domaine ne couvre pas automatiquement ce nouvel alias : vérifier/ajouter exception ciblée avant Stripe. Paiement navigateur toujours non effectué ; pas d’accès Premium réel.
+
+Déploiement Stripe Preview dpl_9jL7y9wgoeLRV3NuJcGcXBiwdwZt confirmé Ready ; alias stable affecté avec succès. Réception webhook Stripe et parcours navigateur restent non vérifiés avant accès réseau/protection.
+
+### Prévisualisation Stripe accessible — 16 novembre 2026
+
+Alias stable https://the-browser-premium-test-manuels-projects-d0a3bea0.vercel.app accessible sans redirection : /premium/stripe-test et /api/premium/auth/session HTTP 200. Webhook Stripe : signature synthétique avec secret configuré HTTP 200, signature invalide HTTP 400. Cela valide réception/secret local, pas une livraison Stripe réelle ni un paiement navigateur. Prochain contrôle humain : connexion Telegram sur cette origine (session distincte du site public), Checkout à 4,57 EUR avec carte Stripe de test, puis vérifier commande Redis et événement Stripe. Aucun débit réel et aucun accès canal attribué.
+
+### Paiement Stripe navigateur validé — 16 novembre 2026
+
+Après confirmation du propriétaire, lecture Redis et Stripe réelle : une commande Stripe test, statut Redis confirmed, montant457 centimes EUR. Session Stripe complete, payment_status paid, livemode=false, montant/devise et client_reference_id conformes. Période enregistrée du 16 novembre 2026 à 21:17:09 UTC au 16 décembre 2026 à 21:17:09 UTC. Test réussi sans argent réel. Cela valide le parcours navigateur et la confirmation serveur ; ne prouve pas à lui seul que la confirmation vient du webhook plutôt que du polling statut. Aucun accès Telegram privé accordé par le pilote. Invitations/retraits, paiements production et règles commerciales restent hors activation.
+
+### Admission et expiration Telegram préparées — 16 novembre 2026
+
+Service premium-channel-access.ts, routes POST /api/premium/access et /api/premium/access/expire, bouton conditionnel et traitement chat_join_request ajoutés localement. Drapeau PREMIUM_TELEGRAM_ACCESS_ENABLED=0 par défaut ; activation exige environment live, jamais les commandes test. Invitation courte à demande d’adhésion liée au compte authentifié ; vérification des paiements réels et dates ; retrait ban/unban récupérable, administrateurs protégés, autre période active respectée. Stockage Redis durable, verrous par utilisateur et confirmation live différée pendant retrait. Voir docs/premium-channel-access.md pour limites, configuration et ordonnanceur encore à raccorder. Aucun lien réel, admission, retrait, modification de webhook distant ni déploiement de ce service. Les pilotes de paiement live restent à développer/valider avant activation ; ne pas transformer le paiement Stripe test précédent en droit réel.
+
+Validation de cette préparation : suite habituelle passée (117 tests avant le dernier scénario ajouté), 9 scénarios du service passés après ce scénario, intégration Redis réel et parcours HTTP passés (14 résultats dans la commande combinée), nouveau contrôle HTTP des routes test passé, lint sans erreur (17 avertissements dans les compétences Vercel locales), build réussi. Aucun test distant des mutations Telegram effectué.

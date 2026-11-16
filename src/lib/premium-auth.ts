@@ -108,7 +108,10 @@ type TelegramUpdate = {
 /** Call only after verifying the Telegram webhook secret. Replies are Bot API webhook responses. */
 export async function premiumTelegramReply(update: TelegramUpdate) {
   if (!premiumAuthEnabled()) return null;
-  const environment = premiumEnvironment();
+  const configured = premiumEnvironment();
+  const requested = (update.message?.text ?? update.callback_query?.data ?? "").match(/premium_(test|live)_/)?.[1];
+  // One bot serves the public live site and the isolated test preview.
+  const environment = configured === "live" && process.env.PREMIUM_TELEGRAM_TEST_AUTH_ENABLED === "1" && requested === "test" ? "test" : configured;
   const auth = premiumAuthStore(environment);
   const message = update.message;
   if (message?.chat?.type === "private" && Number.isSafeInteger(message.from?.id) &&

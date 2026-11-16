@@ -1,3 +1,4 @@
+import { premiumChannelAccessEnabled, withChannelAccess } from "@/lib/premium-channel-access";
 import { revalidateTag } from "next/cache";
 import { hasCatalogueStorage, readChannelState, saveChannelPost } from "@/lib/telegram-store";
 
@@ -20,6 +21,18 @@ export async function POST(request: Request) {
   try { update = JSON.parse(body); }
   catch { return Response.json({ error: "JSON invalide" }, { status: 400 }); }
   if (!update || !Number.isSafeInteger(update.update_id)) return new Response(null, { status: 400 });
+  if (update.chat_join_request) {
+    if (!premiumChannelAccessEnabled()) return Response.json({ ok: true, ignored: true });
+    const join = update.chat_join_request;
+    if (String(join.chat?.id) !== process.env.TELEGRAM_PREMIUM_CHANNEL_ID || join.chat?.type !== "channel" ||
+        !Number.isSafeInteger(join.from?.id) || join.from.id <= 0 || join.from.is_bot || typeof join.invite_link?.invite_link !== "string") {
+      return Response.json({ ok: true, ignored: true });
+    }
+    try {
+      await withChannelAccess(String(join.from.id), service => service.join(String(join.from.id), join.invite_link.invite_link));
+      return Response.json({ ok: true });
+    } catch { return Response.json({ error: "Admission différée, réessayer" }, { status: 503 }); }
+  }
   if (update.message || update.callback_query) {
     try {
       const reply = await premiumTelegramReply(update);

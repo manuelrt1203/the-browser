@@ -33,7 +33,7 @@ if (process.argv.includes('--register')) {
   if (info.url && info.url !== url.toString() && !process.argv.includes('--replace')) throw new Error('Un autre webhook existe : vérifier sa fonction avant de passer --replace.');
   const health = await fetch(url, { headers:{'X-Telegram-Bot-Api-Secret-Token':secret}, signal:AbortSignal.timeout(20_000) });
   if (!health.ok) throw new Error('Le stockage ou le secret du site ne sont pas prêts ; webhook inchangé.');
-  const allowed = premiumTelegramUpdates(info.allowed_updates, process.env.PREMIUM_TELEGRAM_AUTH_ENABLED === '1');
+  const allowed = premiumTelegramUpdates(info.allowed_updates, process.env.PREMIUM_TELEGRAM_AUTH_ENABLED === '1', process.env.PREMIUM_TELEGRAM_ACCESS_ENABLED === '1' && process.env.PREMIUM_ENVIRONMENT === 'live');
   await telegram('setWebhook', {url:url.toString(),secret_token:secret,allowed_updates:allowed,drop_pending_updates:false});
 }
 const current = await telegram('getWebhookInfo');

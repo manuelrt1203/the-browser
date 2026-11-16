@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { premiumRedis } from '../src/lib/premium-redis.ts';
+import { withChannelAccess } from '../src/lib/premium-channel-access.ts';
 import { premiumAuthStore, premiumTelegramReply } from '../src/lib/premium-auth.ts';
 import { createHash } from 'node:crypto';
 
@@ -20,7 +21,7 @@ test('Premium : vrais scripts Lua sur un Redis isolé, sans accès à la product
   const socket = join(directory, 'redis.sock');
   const server = spawn(process.env.REDIS_TEST_SERVER, ['--port','0','--unixsocket',socket,'--unixsocketperm','700','--save','','--appendonly','no','--dir',directory], { stdio: 'ignore' });
   const previousFetch = globalThis.fetch;
-  const names = ['KV_REST_API_URL','KV_REST_API_TOKEN','UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN', 'PREMIUM_ENVIRONMENT', 'PREMIUM_TELEGRAM_AUTH_ENABLED'];
+  const names = ['KV_REST_API_URL','KV_REST_API_TOKEN','UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN', 'PREMIUM_ENVIRONMENT', 'PREMIUM_TELEGRAM_AUTH_ENABLED','PREMIUM_TELEGRAM_ACCESS_ENABLED','TELEGRAM_PREMIUM_CHANNEL_ID','TELEGRAM_CHANNEL_ID','TELEGRAM_BOT_TOKEN','PREMIUM_TELEGRAM_TEST_AUTH_ENABLED'];
   const old = Object.fromEntries(names.map(n => [n,process.env[n]]));
   async function command(args) {
     const { stdout } = await execFile(process.env.REDIS_TEST_CLI, ['-s',socket,'--json',...args.map(String)]);
@@ -131,6 +132,29 @@ test('Premium : vrais scripts Lua sur un Redis isolé, sans accès à la product
       assert.equal((await store.markUnpaid(unpaid,'cs_test_unpaid','failed')).status,'failed');
       await store.confirmPayment({...payment,orderId:unpaid,sessionId:'cs_test_unpaid',paymentId:'pi_unpaid_then_paid'});
       assert.equal((await store.markUnpaid(unpaid,'cs_test_unpaid','cancelled')).status,'confirmed');
+    });
+    await t.test('auth : webhook live accepte explicitement les sessions preview sans mélanger les identités',async()=>{
+      process.env.PREMIUM_ENVIRONMENT='live';process.env.PREMIUM_TELEGRAM_AUTH_ENABLED='1';
+      const auth=premiumAuthStore('test');const challenge=await auth.start();
+      const update={message:{chat:{id:12345,type:'private'},from:{id:12345,is_bot:false},text:'/start premium_test_'+challenge.code}};
+      delete process.env.PREMIUM_TELEGRAM_TEST_AUTH_ENABLED;
+      assert.equal(await premiumTelegramReply(update),null);
+      process.env.PREMIUM_TELEGRAM_TEST_AUTH_ENABLED='1';
+      assert.equal((await premiumTelegramReply(update)).method,'sendMessage');
+      const reply=await premiumTelegramReply({callback_query:{id:'fixture',from:{id:12345,is_bot:false},message:{chat:{id:12345,type:'private'}},data:'premium_test_'+challenge.code}});
+      assert.equal(reply.method,'answerCallbackQuery');assert.equal((await auth.status(challenge.token)).status,'connected');
+      assert.equal((await premiumAuthStore('live').status(challenge.token)).status,'anonymous');
+    });
+    await t.test('live : retrait et confirmation sérialisés, verrou libéré après erreur',async()=>{
+      const live=premiumRedis('live'),id=randomUUID();await live.createOrder(id,'888','stripe');await live.bindSession(id,'cs_live_lock');
+      const lock='the-browser:{premium:live}:channel-access:lock:888';
+      await command(['SET',lock,'worker','EX',120]);
+      await assert.rejects(()=>live.confirmPayment({...payment,orderId:id,sessionId:'cs_live_lock',paymentId:'pi_live_lock'}),e=>e.code==='ACCESS_BUSY');
+      assert.equal((await live.getOrder(id)).status,'pending');await command(['DEL',lock]);
+      assert.equal((await live.confirmPayment({...payment,orderId:id,sessionId:'cs_live_lock',paymentId:'pi_live_lock'})).status,'confirmed');
+      process.env.PREMIUM_ENVIRONMENT='live';process.env.PREMIUM_TELEGRAM_ACCESS_ENABLED='1';process.env.TELEGRAM_PREMIUM_CHANNEL_ID='-100123';process.env.TELEGRAM_CHANNEL_ID='-100456';process.env.TELEGRAM_BOT_TOKEN='fixture';
+      await assert.rejects(()=>withChannelAccess('888',async()=>{assert.ok(await command(['GET',lock]));throw new Error('fixture')}));
+      assert.equal(await command(['GET',lock]),null);
     });
   } finally {
     globalThis.fetch=previousFetch;

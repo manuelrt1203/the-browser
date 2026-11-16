@@ -6,7 +6,7 @@
 
 - Offre serveur : 3 000 XAF pour un mois, sans renouvellement automatique.
 - Premier marché : Congo-Brazzaville, code CG. MTN/Airtel sont proposés uniquement s’ils sont actifs dans le référentiel renvoyé par SasPay pour ce pays. Aucun code réseau n’est deviné ou pris dans le JSON client sans vérification.
-- Paiement direct `POST /payments/softpay/`, avec `Idempotency-Key` stable par commande : cette route documente l’idempotence, contrairement à la création de checkout hébergé. Le résultat peut être un push ou une redirection ; une URL non vide doit être proposée au client. Seul pay.saspay.me en HTTPS est actuellement pris en charge ; les autres redirections sont refusées avant affichage.
+- Paiement direct `POST /payments/softpay/`, avec `Idempotency-Key` stable par commande : cette route documente l’idempotence, contrairement à la création de checkout hébergé. Le résultat peut être un push ou une redirection ; une URL non vide doit être proposée au client. Seul sandbox-checkout.saspay.me en HTTPS est actuellement pris en charge ; les autres redirections sont refusées avant affichage.
 - Les prénom, nom, email et téléphone sont exigés par SasPay et transmis au prestataire, pas conservés dans nos commandes Redis. Numéro attendu : +242 suivi de neuf chiffres. L’identité Telegram vient exclusivement de la session vérifiée, pas des coordonnées du payeur.
 - Les frais restent ceux du compte marchand ; aucune règle commerciale n’a été inventée ni surcharge forcée. À décider et vérifier avant ouverture des paiements réels.
 
@@ -30,9 +30,9 @@ Les routes sont fermées par défaut. Elles ne s’ouvrent qu’en développemen
 
 ## Clés et déploiement
 
-Créer dans SasPay une clé **SANDBOX**, scope **PAYIN**, préfixée sk_test_. La clé sk_live_ évoquée par le propriétaire n’est pas utilisée. Configurer SASPAY_API_KEY_TEST et le secret de signature SASPAY_WEBHOOK_SECRET dans les variables sécurisées de la prévisualisation ; jamais dans le chat ni le dépôt.
+La [documentation sandbox](https://docs.saspay.me/sandbox) consultée le 16 novembre annonce encore « Bientôt disponible ». Créer un **compte sandbox séparé** via le sélecteur Sandbox / Live du tableau de bord, lorsque disponible, puis sa clé scope PAYIN. Une clé créée avec une étiquette SANDBOX dans le compte de production ne suffit pas. La clé sk_live_ évoquée par le propriétaire n’est pas utilisée. Configurer SASPAY_API_KEY_TEST et le secret de signature SASPAY_WEBHOOK_SECRET_TEST dans les variables sécurisées de la prévisualisation ; jamais dans le chat ni le dépôt.
 
-La documentation ne fournit pas d’introspection du mode d’une clé. Le connecteur refuse donc une clé réelle ou un marqueur de proxy à la place d’une clé de test brute. Dans l’environnement cloud, les secrets peuvent être des marqueurs : ils servent à transmettre la valeur au déploiement via l’API Vercel autorisée, sans l’afficher, mais ne permettent pas d’initier directement un push avec ce connecteur local. Le serveur Vercel doit recevoir la véritable valeur en variable sécurisée. Le secret HMAC doit également être une valeur brute sur le serveur qui vérifie la notification, distincte de la clé API.
+**Le préfixe de clé ne protège pas contre un débit réel.** Le connecteur utilise exclusivement `https://sandbox-api.saspay.me/api/v1`, sans bascule configurable vers la production, et refuse les redirections HTTP. Les URL de checkout doivent appartenir à sandbox-checkout.saspay.me, y compris dans Redis test. Une indisponibilité du sandbox produit une erreur, jamais un repli sur api.saspay.me. Le refus des clés étiquetées live et des marqueurs proxy reste un contrôle complémentaire. Dans l’environnement cloud, les secrets peuvent être des marqueurs : ils servent à transmettre la valeur au déploiement via l’API Vercel autorisée, sans l’afficher, mais ne permettent pas d’initier directement un push avec ce connecteur local. Le serveur Vercel doit recevoir la véritable valeur en variable sécurisée. Le secret HMAC doit également être une valeur brute sur le serveur qui vérifie la notification, distincte de la clé API.
 
 Configurer la notification SANDBOX depuis le tableau de bord SasPay (création/modification non disponibles par clé API) sur `https://ADRESSE-DE-PREVISUALISATION/api/saspay/test/webhook`, avec le même secret et les événements ci-dessus. L’adresse réelle dépendra du déploiement ; le texte ci-dessus est un modèle, pas une URL utilisable. Ne pas rediriger le webhook Telegram public vers la prévisualisation : l’identité fonctionne via le webhook existant, la même base Redis et l’espace test, après activation de la connexion sur le site.
 
@@ -58,3 +58,15 @@ Références consultées le 16 novembre 2026 :
 - https://docs.saspay.me/api-reference/payments/verify
 - https://docs.saspay.me/api-reference/webhooks
 - https://docs.saspay.me/account-setup
+
+## Scénarios sandbox documentés
+
+Quand le service sera disponible, utiliser des numéros complets plausibles : dernier chiffre 0 pour succès, 1 pour échec, 2 pour solde insuffisant, 9 pour attente persistante. Ces scénarios externes et la disponibilité effective du service ne sont pas encore vérifiés. Aucun appel SasPay authentifié effectué pendant cette correction.
+
+### Essais externes SasPay sandbox — 16 novembre 2026
+
+Tests autorisés sur sandbox-api.saspay.me uniquement, données client fictives +242, montant serveur 3000 XAF. MTN numéro finissant par 0 : création réussie, verify SUCCESS, rapprochement strict verifiedSasPayResult confirmé (montant/type/sens/description/date). Airtel finissant par 1 et MTN finissant par 2 : softpay renvoie HTTP 422, success=false, code client_fault, sans ID à vérifier dans cette réponse ; ne pas prétendre avoir observé verify FAILED ou un code spécifique solde insuffisant. Airtel finissant par 9 : création HTTP 201 PENDING, verify HTTP 200 PENDING. Ce dernier statut observé ne prouve pas une attente indéfinie. Les requêtes diagnostiques ont utilisé de nouvelles intentions/idempotency keys, pas des retries aveugles. Aucun paiement réel, droit Redis/Telegram, invitation, déploiement ni changement de webhook. Livraison externe du webhook et parcours navigateur restent non vérifiés.
+
+### Réception webhook test vérifiée et URL SasPay à corriger — 16 novembre 2026
+
+La prévisualisation est accessible : POST webhook.test signé localement avec SASPAY_WEBHOOK_SECRET_TEST renvoie HTTP 200 ; mauvaise signature HTTP 400. Ce test est synthétique, pas une livraison SasPay. Lecture du compte sandbox : un webhook actif SANDBOX vise https://the-browser-one.vercel.app/webhooks/saspay, différent de la route déployée. 12 abonnements et zéro journal renvoyés par les listes consultées. Le propriétaire doit modifier l’URL depuis le tableau de bord sandbox vers https://the-browser-ct93diwel-manuels-projects-d0a3bea0.vercel.app/api/saspay/test/webhook ; création/modification non disponible par clé API selon documentation. Ne pas toucher au webhook live ni régénérer le secret pour une simple modification URL. Aucune configuration distante changée pendant ce contrôle.

@@ -6,6 +6,9 @@ import { premiumAuthEnabled } from "@/lib/premium-auth";
 import { TelegramAccount } from "@/components/TelegramAccount";
 import { saspayTestEnabled } from "@/lib/saspay";
 
+import { premiumChannelAccessEnabled } from "@/lib/premium-channel-access";
+import { PremiumChannelAccess } from "@/components/PremiumChannelAccess";
+
 export const metadata = { title: "Premium — The Browser" };
 
 export default function PremiumPage() {
@@ -28,6 +31,7 @@ export default function PremiumPage() {
       </section>
       {demo && <PremiumDemo />}
       {premiumAuthEnabled() && <TelegramAccount />}
+      {premiumChannelAccessEnabled() && <PremiumChannelAccess />}
       {stripeTestEnabled() && <Link href="/premium/stripe-test" className="mt-6 inline-block text-sky-300 underline">Essayer le paiement Stripe en mode test</Link>}
       {saspayTestEnabled() && <Link href="/premium/saspay-test" className="mt-6 block text-sky-300 underline">Essayer MTN / Airtel avec SasPay en mode test</Link>}
     </main>

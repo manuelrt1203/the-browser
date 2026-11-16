@@ -3,7 +3,7 @@ import { refreshSasPayTestOrder, findSasPayTestOrder } from "@/lib/saspay-orders
 
 export async function POST(request: Request) {
   if (!saspayTestEnabled()) return new Response(null, { status: 404 });
-  const secret = process.env.SASPAY_WEBHOOK_SECRET;
+  const secret = process.env.SASPAY_WEBHOOK_SECRET_TEST;
   if (!secret) return Response.json({ error: "Webhook SasPay non configuré" }, { status: 503 });
   const body = await request.text();
   if (Buffer.byteLength(body) > 128_000) return new Response(null, { status: 413 });
