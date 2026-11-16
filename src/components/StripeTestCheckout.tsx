@@ -46,14 +46,14 @@ export function StripeTestCheckout() {
       <h1 className="text-3xl font-bold">Essayer Stripe — 4,57 €</h1>
       <p className="mt-4 text-white/70">Environnement de test uniquement. Utilisez les moyens de paiement de test Stripe, sans argent réel. Aucun accès Telegram ne sera accordé.</p>
       <TelegramAccount onChange={setConnected} />
-      {!orderId ? <button onClick={checkout} disabled={busy || !connected} className="mt-6 rounded-lg bg-sky-300 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50">
+      {!orderId ? <button onClick={checkout} disabled={busy || !connected} className="mt-6 rounded-lg bg-amber-200 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50">
         {busy ? "Ouverture…" : "Ouvrir le paiement Stripe de test"}
       </button> : <>
         <p className="mt-6 text-white/70">Votre retour sur le site ne confirme pas le paiement. Le statut ci-dessous dépend de la notification Stripe vérifiée par le serveur.</p>
-        <button onClick={refresh} disabled={busy || !connected} className="mt-4 rounded-lg border border-sky-300/50 px-5 py-3 disabled:opacity-50">
+        <button onClick={refresh} disabled={busy || !connected} className="mt-4 rounded-lg border border-amber-200/50 px-5 py-3 disabled:opacity-50">
           {busy ? "Vérification…" : "Vérifier la confirmation"}
         </button>
-        <a href="/premium/stripe-test" className="ml-4 inline-block text-sky-300 underline">Nouvel essai</a>
+        <a href="/premium/stripe-test" className="ml-4 inline-block text-amber-200 underline">Nouvel essai</a>
       </>}
       <div className="mt-5 space-y-2" aria-live="polite">
         {error && <p role="alert" className="text-amber-200">{error}</p>}

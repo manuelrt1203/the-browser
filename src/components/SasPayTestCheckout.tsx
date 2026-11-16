@@ -64,11 +64,11 @@ export function SasPayTestCheckout() {
         <option value="" disabled>Choisissez votre réseau</option>
         {networks.map(n => <option key={n.code} value={n.code}>{n.name}</option>)}
       </select></label>
-      <button disabled={busy || !connected || networks.length === 0} className="rounded-lg bg-sky-300 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50 sm:col-span-2">{busy ? "Demande en cours…" : "Demander le paiement de test"}</button>
+      <button disabled={busy || !connected || networks.length === 0} className="rounded-lg bg-amber-200 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50 sm:col-span-2">{busy ? "Demande en cours…" : "Demander le paiement de test"}</button>
     </form> : <div className="mt-6 space-y-4">
       <p>Confirmez la demande dans votre application Mobile Money de test, puis vérifiez le résultat ici.</p>
-      {checkoutUrl && <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className="block text-sky-300 underline">Continuer sur la page de paiement SasPay</a>}
-      <button onClick={refresh} disabled={busy || !connected} className="rounded-lg border border-sky-300/50 px-5 py-3 disabled:opacity-50">{busy ? "Vérification…" : "Vérifier le paiement"}</button>
+      {checkoutUrl && <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className="block text-amber-200 underline">Continuer sur la page de paiement SasPay</a>}
+      <button onClick={refresh} disabled={busy || !connected} className="rounded-lg border border-amber-200/50 px-5 py-3 disabled:opacity-50">{busy ? "Vérification…" : "Vérifier le paiement"}</button>
     </div>}
     <div aria-live="polite" className="mt-5 space-y-2">
       {error && <p role="alert" className="text-amber-200">{error}</p>}

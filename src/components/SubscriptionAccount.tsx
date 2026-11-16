@@ -37,8 +37,8 @@ export function SubscriptionAccount() {
   useEffect(() => abortRequest, [abortRequest]);
   return <>
     <TelegramAccount onChange={changeConnection} />
-    {connected && <section className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-6" aria-busy={loading}>
-      <div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold">Votre abonnement</h2><button onClick={() => { setLoading(true); setError(""); void refresh(); }} disabled={loading} className="text-sky-300 underline disabled:opacity-50">Actualiser</button></div>
+    {connected && <section className="mt-6 surface-panel p-6" aria-busy={loading}>
+      <div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold">Votre abonnement</h2><button onClick={() => { setLoading(true); setError(""); void refresh(); }} disabled={loading} className="text-amber-200 underline disabled:opacity-50">Actualiser</button></div>
       {loading && <p className="mt-4 text-white/60">Chargement…</p>}
       {error && <p className="mt-4 text-amber-200" role="alert">{error}</p>}
       {account && <>
@@ -57,6 +57,6 @@ export function SubscriptionAccount() {
         </li>)}</ul></div>}
       </>}
     </section>}
-    <nav className="mt-6 flex flex-wrap gap-5 text-sky-300 underline"><Link href="/premium">Voir l’offre Premium</Link><Link href="/support">Support</Link><Link href="/remboursements">Remboursements</Link></nav>
+    <nav aria-label="Liens de votre abonnement" className="mt-6 flex flex-wrap gap-5 text-amber-200 underline"><Link href="/premium">Voir l’offre Premium</Link><Link href="/support">Support</Link><Link href="/remboursements">Remboursements</Link></nav>
   </>;
 }

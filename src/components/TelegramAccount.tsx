@@ -51,22 +51,22 @@ export function TelegramAccount({ onChange }: { onChange?: (connected: boolean) 
     } catch { setError("Déconnexion indisponible. Réessayez."); }
     finally { setBusy(false); }
   }
-  return <section className="mt-8 rounded-2xl border border-white/15 bg-white/5 p-6">
+  return <section className="mt-8 surface-panel p-6">
     <h2 className="text-xl font-semibold">Votre compte Telegram</h2>
     <p className="mt-2 text-white/70">Associez votre compte pour que l’abonnement soit attribué à la bonne personne.</p>
     {status === "connected" ? <>
       <p className="mt-4 text-emerald-300">Votre compte Telegram est connecté.</p>
-      <button onClick={logout} disabled={busy} className="mt-4 text-sky-300 underline disabled:opacity-50">Se déconnecter</button>
+      <button onClick={logout} disabled={busy} className="mt-4 text-amber-200 underline disabled:opacity-50">Se déconnecter</button>
     </> : <>
-      <button onClick={start} disabled={busy || status === "pending" || status === "loading"} className="mt-4 rounded-lg border border-sky-300/50 px-5 py-3 disabled:opacity-50">
+      <button onClick={start} disabled={busy || status === "pending" || status === "loading"} className="mt-4 rounded-lg border border-amber-200/50 px-5 py-3 disabled:opacity-50">
         {busy ? "Connexion…" : "Connecter mon compte Telegram"}
       </button>
       {telegramUrl && <div className="mt-4 space-y-3">
-        <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-sky-300 px-5 py-3 font-semibold text-slate-950">Ouvrir Telegram</a>
+        <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-amber-200 px-5 py-3 font-semibold text-slate-950">Ouvrir Telegram</a>
         <p className="text-sm text-white/70">Appuyez sur « Démarrer », puis sur « Confirmer ma connexion » dans le bot. Revenez ensuite ici. Le lien expire après dix minutes.</p>
-        <button onClick={() => { void refresh(); }} className="block text-sky-300 underline">J’ai confirmé dans Telegram</button>
+        <button onClick={() => { void refresh(); }} className="block text-amber-200 underline">J’ai confirmé dans Telegram</button>
       </div>}
-      {status === "pending" && !telegramUrl && <button onClick={start} disabled={busy} className="mt-4 block text-sky-300 underline">Créer un nouveau lien de connexion</button>}
+      {status === "pending" && !telegramUrl && <button onClick={start} disabled={busy} className="mt-4 block text-amber-200 underline">Créer un nouveau lien de connexion</button>}
     </>}
     <p role="status" aria-live="polite" className="mt-3 text-amber-200">{error}</p>
   </section>;

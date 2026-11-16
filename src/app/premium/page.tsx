@@ -5,37 +5,18 @@ import { stripeTestEnabled } from "@/lib/stripe-test";
 import { premiumAuthEnabled } from "@/lib/premium-auth";
 import { TelegramAccount } from "@/components/TelegramAccount";
 import { saspayTestEnabled } from "@/lib/saspay";
-
 import { premiumChannelAccessEnabled } from "@/lib/premium-channel-access";
 import { PremiumChannelAccess } from "@/components/PremiumChannelAccess";
-
 export const metadata = { title: "Premium — The Browser" };
-
 export default function PremiumPage() {
   const demo = process.env.NODE_ENV === "development" && process.env.PREMIUM_DEMO_ENABLED === "1";
-  return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-12 text-white">
-      <Link href="/" className="text-sky-300 hover:underline">← Retour au catalogue</Link>
-      <p className="mt-10 text-sm uppercase tracking-widest text-sky-300">The Browser</p>
-      <h1 className="mt-2 text-4xl font-bold">Un mois de Premium</h1>
-      <p className="mt-4 text-lg text-white/70">L’accès au canal Telegram privé, après confirmation de votre paiement.</p>
-      <section className="mt-8 rounded-2xl border border-violet-400/30 bg-violet-950/30 p-6">
-        <h2 className="text-3xl font-bold">{PREMIUM_OFFERS.saspay.label} <span className="text-base font-normal text-white/60">par mois</span></h2>
-        <p className="mt-2 text-white/70">Ou {PREMIUM_OFFERS.stripe.label} en euros.</p>
-        <ul className="mt-6 space-y-3 text-white/80">
-          <li>Un abonnement commencé le 10 expire le 10 du mois suivant.</li>
-          <li>Si la date n’existe pas, expiration le dernier jour du mois suivant.</li>
-          <li>Renouvellement manuel : aucun prélèvement automatique.</li>
-          <li>Le catalogue public reste accessible à tous.</li>
-        </ul>
-        <p className="mt-6 rounded-lg bg-white/5 p-4 text-sm text-amber-100">Ouverture prochainement. Les paiements ne sont pas encore disponibles.</p>
-      </section>
-      <Link href="/mon-abonnement" className="mt-6 inline-block text-sky-300 underline">Mon abonnement</Link>
-      {demo && <PremiumDemo />}
-      {premiumAuthEnabled() && <TelegramAccount />}
-      {premiumChannelAccessEnabled() && <PremiumChannelAccess />}
-      {stripeTestEnabled() && <Link href="/premium/stripe-test" className="mt-6 inline-block text-sky-300 underline">Essayer le paiement Stripe en mode test</Link>}
-      {saspayTestEnabled() && <Link href="/premium/saspay-test" className="mt-6 block text-sky-300 underline">Essayer MTN / Airtel avec SasPay en mode test</Link>}
-    </main>
-  );
+  return <main className="mx-auto w-full max-w-5xl px-5 pb-16 text-white sm:px-8">
+    <div className="premium-layout mt-8 sm:mt-14">
+      <div className="page-intro !mt-0"><p className="eyebrow">The Browser Premium</p><h1>Vos découvertes.<br /><span className="text-[var(--amber)]">Un accès privilégié.</span></h1><p>Retrouvez l’accès au canal Telegram privé dans un abonnement mensuel, associé à votre compte.</p><Link href="/mon-abonnement" className="button-primary mt-7">Mon abonnement <span aria-hidden="true">↗</span></Link><Link href="/" className="button-secondary mt-3 block">Explorer le catalogue public →</Link></div>
+      <section className="premium-price" aria-labelledby="offre-titre"><p className="eyebrow">Une formule. Un mois.</p><h2 id="offre-titre">{PREMIUM_OFFERS.saspay.label} <span>/ mois</span></h2><p className="mt-2 text-sm text-white/55">Ou {PREMIUM_OFFERS.stripe.label} en euros.</p><ul className="premium-perks"><li>Accès au canal privé après confirmation du paiement.</li><li>Du 10 au 10 du mois suivant, ou au dernier jour si la date n’existe pas.</li><li>Renouvellement manuel, sans prélèvement automatique.</li><li>Le catalogue public reste accessible à tous.</li></ul><p className="premium-notice">Ouverture prochainement. Les paiements ne sont pas encore disponibles.</p></section>
+    </div>
+    <div className="mx-auto max-w-2xl">{demo && <PremiumDemo />}{premiumAuthEnabled() && <TelegramAccount />}{premiumChannelAccessEnabled() && <PremiumChannelAccess />}
+    {stripeTestEnabled() && <Link href="/premium/stripe-test" className="button-secondary mt-6">Essayer le paiement Stripe en mode test →</Link>}
+    {saspayTestEnabled() && <Link href="/premium/saspay-test" className="button-secondary mt-3">Essayer MTN / Airtel avec SasPay en mode test →</Link>}</div>
+  </main>;
 }

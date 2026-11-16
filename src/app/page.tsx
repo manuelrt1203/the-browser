@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { connection } from "next/server";
 import { Catalogue } from "@/components/Catalogue";
 import type { Title } from "@/data/catalogue";
@@ -41,45 +40,9 @@ async function CatalogueSection() {
 }
 
 export default function Home() {
-  return (
-    <>
-      <header className="border-b border-white/10 bg-gradient-to-b from-violet-950/60 to-transparent">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
-          <p className="text-sm font-medium uppercase tracking-widest text-sky-300">
-            Discover. Watch. Enjoy.
-          </p>
-          <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-            The Browser
-          </h1>
-          <p className="mt-3 max-w-xl text-white/70">
-            Notre sélection de films et séries, avec un accès direct à leurs
-            publications dans le canal Telegram.
-          </p>
-          <Link href="/premium" className="mt-6 inline-block rounded-lg border border-sky-300/40 px-5 py-3 font-medium text-sky-200 hover:bg-sky-300/10">
-            Découvrir Premium
-          </Link>
-          <Link href="/mon-abonnement" className="ml-5 text-sky-200 underline">Mon abonnement</Link>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
-        <Suspense
-          fallback={<p className="text-white/60">Chargement du catalogue…</p>}
-        >
-          <CatalogueSection />
-        </Suspense>
-      </main>
-
-      <footer className="border-t border-white/10 px-4 py-6 text-center text-xs text-white/50">
-        <nav className="mb-4 flex flex-wrap justify-center gap-5 text-sky-200"><Link href="/conditions">Conditions de vente</Link><Link href="/remboursements">Remboursements</Link><Link href="/support">Support</Link></nav>
-        <p>
-          Données de films et séries fournies par TMDB. Ce produit utilise
-          l&apos;API TMDB mais n&apos;est ni approuvé ni certifié par TMDB.
-        </p>
-        <p className="mt-1">
-          Informations « Où regarder » fournies par JustWatch via TMDB.
-        </p>
-      </footer>
-    </>
-  );
+  return <main className="catalogue-page">
+    <Suspense fallback={<div className="catalogue-loading" role="status"><span className="eyebrow">Votre prochaine découverte</span><h1>Le cinéma vous attend.</h1><p>Chargement du catalogue…</p><div className="loading-posters" aria-hidden="true"><span /><span /><span /><span /><span /></div></div>}>
+      <CatalogueSection />
+    </Suspense>
+  </main>;
 }

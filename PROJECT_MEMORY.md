@@ -2,6 +2,16 @@
 
 Mise à jour : 16 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
+## Refonte visuelle cinéma — 16 novembre 2026
+
+Le propriétaire demande l’usage de skills et choisit « cinéma sombre et élégant, touches ambrées ». web-design-guidelines et vercel-react-best-practices appliquées. Navigation/pied partagés, hero avec trois affiches réelles, catalogue/cartes/filtres/état vide redessinés, pages Premium/compte/informations harmonisées. Recherche, tri, épisodes/provenances, liens et règles commerciales conservés. Voir docs/design.md. Validation : 122 tests, parcours HTTP complet réussi, lint sans erreur (17 avertissements dans les skills locales), build et vérification visuelle Chromium ordinateur/mobile, absence de débordement à 320 px, préférence de mouvement réduit et interactions catalogue vérifiées. Aucun paiement ni changement du webhook ; livraison prévue en preview pour revue, pas en Production sans nouvelle demande.
+
+## Espace abonnement publié et catalogue Preview réparé — 16 novembre 2026
+
+Publication explicitement autorisée. Commits 5ef8462 puis c27539e poussés sur main ; déploiement Production dpl_Gv7Sue6H16AadxKdPwVo1Z9rWCfB confirmé Ready, lié au domaine public. /mon-abonnement, /conditions, /remboursements et /support HTTP200 ; API privée sans session HTTP401 ; paiements Stripe/SasPay de test toujours404 en Production. Pages commerciales toujours préparatoires, pas d’identité/contact inventés et ventes réelles fermées.
+
+Le propriétaire signale le message TMDB manquant : reproduit sur Preview uniquement. TMDB_READ_TOKEN était affecté à Production, pas Preview ; affectation étendue par API sans lecture de sa valeur, Production conservée. TELEGRAM_CHANNEL_ID manquait aussi dans Preview, ajouté avec le canal public existant -1004339801492. Preview finale dpl_H4zTfUu1raSYEzReV5jZJYH6cp5h Ready, alias stable de test réaffecté. Contrôle final des deux catalogues (public et preview) : HTTP200, ni message de jeton absent ni indisponibilité, URLs d’affiches TMDB présentes. Aucun secret à ressaisir, aucune donnée de catalogue ni webhook modifié.
+
 ## Renouvellement manuel et espace abonnement — 16 novembre 2026
 
 Décision confirmée : renouvellement manuel, aucun prélèvement/reconduction automatique. Le propriétaire ne dispose pas des informations professionnelles/contact demandées ; aucune identité, adresse ou e-mail inventé. Il choisit aucune garantie commerciale de remboursement supplémentaire, sans suppression des droits légaux. Conditions, remboursements et support préparés avec avertissement ventes fermées ; trame complète et points à compléter dans docs/commercial-terms-draft.md. SUPPORT_EMAIL peut être renseigné lorsqu’une adresse opérationnelle existe. Ouverture des ventes toujours reportée ; achat anticipé/frais/fiscalité/fuseau contractuel restent à préciser.

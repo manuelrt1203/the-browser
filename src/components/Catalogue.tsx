@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { sortCatalogue } from "@/lib/catalogue-links";
 import type { Kind, Title } from "@/data/catalogue";
 
@@ -36,9 +36,11 @@ function Poster({ item }: { item: Title }) {
       <img
         src={item.poster}
         alt=""
+        width={400}
+        height={600}
         loading="lazy"
         referrerPolicy="no-referrer"
-        className="h-full w-full object-cover"
+        className="poster-image"
       />
     );
   }
@@ -59,6 +61,8 @@ function Poster({ item }: { item: Title }) {
 }
 
 export function Catalogue({ items }: { items: Title[] }) {
+  const search = useRef<HTMLInputElement>(null);
+  const featured = useMemo(() => items.filter(item => item.poster).slice(0, 3), [items]);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>("tous");
   const [genre, setGenre] = useState<string>("");
@@ -81,110 +85,78 @@ export function Catalogue({ items }: { items: Title[] }) {
     }));
   }, [items, query, kind, genre]);
 
-  return (
-    <section aria-labelledby="catalogue-titre">
-      <h2 id="catalogue-titre" className="sr-only">
-        Catalogue
-      </h2>
-
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="flex-1">
-          <label htmlFor="recherche" className="sr-only">
-            Rechercher un film ou une série
-          </label>
-          <input
-            id="recherche"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher un titre, un genre, une année…"
-            className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-base text-white placeholder:text-white/50 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/50"
-          />
-        </div>
-
-        <div role="group" aria-label="Type de contenu" className="flex gap-2">
-          {(Object.keys(KIND_LABELS) as KindFilter[]).map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={kind === k}
-              onClick={() => setKind(k)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-                kind === k
-                  ? "bg-violet-500 text-white"
-                  : "bg-white/10 text-white/80 hover:bg-white/20"
-              }`}
-            >
-              {KIND_LABELS[k]}
-            </button>
-          ))}
-        </div>
-
-        <div>
-          <label htmlFor="genre" className="sr-only">
-            Genre
-          </label>
-          <select
-            id="genre"
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            className="w-full rounded-xl border border-white/15 bg-neutral-900 px-3 py-3 text-sm text-white focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/50 sm:w-auto"
-          >
-            <option value="">Tous les genres</option>
-            {genres.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </div>
+  return <>
+    <section className="cinema-hero" aria-labelledby="decouverte-titre">
+      <div className="hero-copy">
+        <p className="eyebrow" translate="no">Discover. Watch. Enjoy.</p>
+        <h1 id="decouverte-titre">Votre prochaine<br /><em>découverte.</em></h1>
+        <p className="hero-description">Des films qui marquent. Des séries qu’on dévore. Explorez le catalogue et retrouvez vos prochaines découvertes sur Telegram.</p>
+        <div className="hero-actions"><a href="#catalogue" className="button-primary">Explorer le catalogue <span aria-hidden="true">↓</span></a><a href="https://t.me/TheBrowser365" target="_blank" rel="noopener noreferrer" className="button-secondary">Le canal Telegram <span aria-hidden="true">↗</span><span className="sr-only"> — nouvel onglet</span></a></div>
+        <p className="hero-note"><span aria-hidden="true" />Catalogue public · Films et séries</p>
       </div>
-
-      <p className="mb-4 text-sm text-white/60" role="status">
-        {visible.length} résultat{visible.length > 1 ? "s" : ""} · Ordre alphabétique
-      </p>
-
+      {featured.length > 0 && <div className="hero-art">
+        {featured.map((item,index) => (
+          // Les affiches sont déjà redimensionnées par le CDN TMDB.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={item.id} src={item.poster!} alt="" width={400} height={600} loading={index === 1 ? "eager" : "lazy"} fetchPriority={index === 1 ? "high" : "auto"} referrerPolicy="no-referrer" className="hero-poster" />))}
+        <p className="hero-caption"><span>À découvrir</span>{(featured[1] ?? featured[0]).title}</p>
+      </div>}
+    </section>
+    <section id="catalogue" aria-labelledby="catalogue-titre" className="catalogue-section">
+      <div className="catalogue-heading"><h2 id="catalogue-titre">Le catalogue<span className="text-[var(--amber)]">.</span></h2><p>Films, séries &amp; belles découvertes</p></div>
+      <div className="catalogue-controls">
+        <div className="search-control" role="search">
+          <label htmlFor="recherche" className="sr-only">Rechercher un film ou une série</label>
+          <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+          <input ref={search} id="recherche" name="q" type="search" autoComplete="off" spellCheck={false} value={query} onChange={e => setQuery(e.target.value)} placeholder="Un titre, un genre, une année…" />
+          {query && <button type="button" className="search-clear" aria-label="Effacer la recherche" onClick={() => { setQuery(""); search.current?.focus(); }}>×</button>}
+        </div>
+        <div role="group" aria-label="Type de contenu" className="kind-filters">
+          {(Object.keys(KIND_LABELS) as KindFilter[]).map(k => <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>{KIND_LABELS[k]}</button>)}
+        </div>
+        <div><label htmlFor="genre" className="sr-only">Genre</label><select id="genre" name="genre" value={genre} onChange={e => setGenre(e.target.value)} className="genre-select"><option value="">Tous les genres</option>{genres.map(g => <option key={g} value={g}>{g}</option>)}</select></div>
+      </div>
+      <p className="catalogue-count" role="status" aria-live="polite"><strong>{new Intl.NumberFormat("fr-FR").format(visible.length)}</strong> résultat{visible.length > 1 ? "s" : ""}<span aria-hidden="true">·</span>Ordre alphabétique</p>
       {visible.length === 0 ? (
-        <p className="rounded-xl border border-white/10 bg-white/5 p-8 text-center text-white/70">
-          Aucun titre ne correspond à votre recherche.
-        </p>
+        <div className="empty-catalogue"><h3>Aucune découverte pour le moment</h3><p>Aucun titre ne correspond à votre recherche. Essayez un autre titre ou un autre genre.</p><button type="button" onClick={() => { setQuery(""); setKind("tous"); setGenre(""); search.current?.focus(); }}>Réinitialiser les filtres</button></div>
       ) : (
-        <ul className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <ul className="catalogue-grid">
           {visible.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} className="catalogue-entry">
               <a
                 href={item.telegramUrl ?? item.watchUrl}
                 aria-label={item.telegramUrl ? `Ouvrir ${item.title} dans le canal Telegram` : `Consulter les offres légales pour ${item.title}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:-translate-y-1 hover:border-violet-400/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                className="title-card group"
               >
-                <div className="aspect-[2/3] overflow-hidden">
+                <div className="poster-frame">
                   <Poster item={item} />
+                  <span className="poster-badge">{item.kind === "film" ? "Film" : "Série"}</span><span className="poster-arrow" aria-hidden="true">↗</span>
                 </div>
-                <div className="p-3">
-                  <h3 className="truncate font-semibold text-white">
+                <div className="title-info">
+                  <h3>
                     {item.title}
                   </h3>
-                  <p className="mt-0.5 text-xs text-white/60">
+                  <p className="title-metadata">
                     {item.kind === "film" ? "Film" : "Série"}
                     {item.year ? ` · ${item.year}` : ""}
                     {item.genres.length > 0 ? ` · ${item.genres.slice(0, 3).join(", ")}` : ""}
                   </p>
                   {item.episodes && item.episodes.length > 0 && (
-                    <p className="mt-1 text-xs text-sky-300">
+                    <p className="provenance-note">
                       {item.episodes.length} épisode{item.episodes.length > 1 ? "s" : ""} référencé{item.episodes.length > 1 ? "s" : ""} par TMDB
                     </p>
                   )}
                   {item.sourceEpisodes && item.sourceEpisodes.length > 0 && (
-                    <p className="mt-1 text-xs text-sky-300">
+                    <p className="provenance-note">
                       {item.sourceEpisodes.length} épisode{item.sourceEpisodes.length > 1 ? "s" : ""} vérifié{item.sourceEpisodes.length > 1 ? "s" : ""} dans le canal
                     </p>
                   )}
-                  <p className="mt-2 line-clamp-2 text-xs text-white/70">
+                  <p className="title-synopsis line-clamp-2">
                     {item.synopsis}
                   </p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-sky-300 group-hover:text-sky-200">
+                  <span className="title-action">
                     {item.telegramUrl ? "Voir dans le canal" : "Offres légales"}
                     <span className="sr-only"> (s&apos;ouvre dans un nouvel onglet)</span>
                     <span aria-hidden="true">↗</span>
@@ -192,8 +164,8 @@ export function Catalogue({ items }: { items: Title[] }) {
                 </div>
               </a>
               {item.kind === "serie" && item.telegramPublications && item.telegramPublications.length > 0 && (
-                <details className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                  <summary className="cursor-pointer text-sm font-medium text-sky-300">{item.telegramPublications.some((publication) => publication.episode !== undefined) ? "Choisir un épisode" : "Voir les publications"}</summary>
+                <details className="episode-picker">
+                  <summary>{item.telegramPublications.some((publication) => publication.episode !== undefined) ? "Choisir un épisode" : "Voir les publications"}</summary>
                   <ul className="mt-3 max-h-60 space-y-2 overflow-y-auto text-sm">
                     {item.telegramPublications.map((publication) => (
                       <li key={`${publication.url}:${publication.numbering ?? "post"}:${publication.season ?? ""}:${publication.episode ?? ""}`}>
@@ -209,7 +181,7 @@ export function Catalogue({ items }: { items: Title[] }) {
                 </details>
               )}
               {item.telegramUrl && (
-                <a href={item.watchUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs text-white/60 underline hover:text-white">
+                <a href={item.watchUrl} target="_blank" rel="noopener noreferrer" className="legal-offers">
                   Offres légales en France
                 </a>
               )}
@@ -218,5 +190,5 @@ export function Catalogue({ items }: { items: Title[] }) {
         </ul>
       )}
     </section>
-  );
+  </>;
 }
