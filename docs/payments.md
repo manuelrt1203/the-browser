@@ -1,6 +1,6 @@
 # Paiements — décisions et mise en place
 
-Statut au 16 novembre 2026 : **SasPay et Stripe retenus ; compte SasPay en attente de validation**, selon la confirmation du propriétaire. Tarif fixé le 15 novembre 2026 : **3 000 XAF par mois, ou son équivalent arrondi de 4,57 EUR**. Le renouvellement et la prise en charge des frais de paiement restent à définir. Les pilotes Stripe et SasPay sont implémentés en mode test ; aucun encaissement réel activé.
+Statut au 16 novembre 2026 : **SasPay et Stripe retenus ; compte SasPay en attente de validation**, selon la confirmation du propriétaire. Tarif fixé le 15 novembre 2026 : **3 000 XAF par mois, ou son équivalent arrondi de 4,57 EUR**. Le renouvellement est manuel, sans prélèvement automatique ; la prise en charge des frais de paiement reste à définir. Les pilotes Stripe et SasPay sont implémentés en mode test ; aucun encaissement réel activé.
 
 ## Première étape implémentée — 15 novembre 2026
 
