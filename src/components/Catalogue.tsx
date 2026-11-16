@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useRef } from "react";
 import { sortCatalogue } from "@/lib/catalogue-links";
+import { CinemaCarousel } from "./CinemaCarousel";
 import type { Kind, Title } from "@/data/catalogue";
 
 type KindFilter = "tous" | Kind;
@@ -62,7 +63,6 @@ function Poster({ item }: { item: Title }) {
 
 export function Catalogue({ items }: { items: Title[] }) {
   const search = useRef<HTMLInputElement>(null);
-  const featured = useMemo(() => items.filter(item => item.poster).slice(0, 3), [items]);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>("tous");
   const [genre, setGenre] = useState<string>("");
@@ -94,13 +94,7 @@ export function Catalogue({ items }: { items: Title[] }) {
         <div className="hero-actions"><a href="#catalogue" className="button-primary">Explorer le catalogue <span aria-hidden="true">↓</span></a><a href="https://t.me/TheBrowser365" target="_blank" rel="noopener noreferrer" className="button-secondary">Le canal Telegram <span aria-hidden="true">↗</span><span className="sr-only"> — nouvel onglet</span></a></div>
         <p className="hero-note"><span aria-hidden="true" />Catalogue public · Films et séries</p>
       </div>
-      {featured.length > 0 && <div className="hero-art">
-        {featured.map((item,index) => (
-          // Les affiches sont déjà redimensionnées par le CDN TMDB.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={item.id} src={item.poster!} alt="" width={400} height={600} loading={index === 1 ? "eager" : "lazy"} fetchPriority={index === 1 ? "high" : "auto"} referrerPolicy="no-referrer" className="hero-poster" />))}
-        <p className="hero-caption"><span>À découvrir</span>{(featured[1] ?? featured[0]).title}</p>
-      </div>}
+      <CinemaCarousel items={items} />
     </section>
     <section id="catalogue" aria-labelledby="catalogue-titre" className="catalogue-section">
       <div className="catalogue-heading"><h2 id="catalogue-titre">Le catalogue<span className="text-[var(--amber)]">.</span></h2><p>Films, séries &amp; belles découvertes</p></div>

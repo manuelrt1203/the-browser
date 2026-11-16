@@ -413,3 +413,11 @@ Prévisualisation espace abonnement : commit local 5ef8462, déploiement dpl_9xK
 ### Publication de l’espace abonnement autorisée — 16 novembre 2026
 
 Le propriétaire demande explicitement de publier et déployer les changements de la prévisualisation. Livrer /mon-abonnement, conditions, remboursements et support sur le site public en conservant le caractère préparatoire des pages commerciales, les ventes fermées, le renouvellement manuel et les protections des paiements test. Les résultats de publication/déploiement seront vérifiés ensuite.
+
+### Prévisualisation du design prête — 17 novembre 2026
+
+Commit local 0981f9c, preview dpl_EJH5Gskq4UxTwgsugb1NuJn3Z5gP confirmée Ready et affectée à l’alias stable the-browser-premium-test-manuels-projects-d0a3bea0.vercel.app. Contrôle distant : accueil, Premium, mon-abonnement et conditions HTTP200, navigation partagée présente ; hero, affiches et CSS ambré chargent. Site public et main non modifiés pour cette refonte. Cache généré .next/dev ancien déplacé vers /tmp/the-browser-dev-cache-before-redesign, puis compilation CSS fraîche de développement vérifiée ; sources et données conservées. Prévisualisation prête pour revue utilisateur avant éventuelle publication Production.
+
+### Motion design du hero — 17 novembre 2026
+
+Le propriétaire approuve la refonte ambrée et demande des affiches tournantes pour les sorties phares de 2026 présentes dans le canal. Coverflow implémenté dans CinemaCarousel : sélection stricte année2026 + affiche + lien réel vers TheBrowser365 ou c/4339801492, dédupliquée, sans classement fictif ; 23 titres éligibles observés. Flèches/clavier/pause, progression, inclinaison au pointeur, entrée du texte. Pause hors écran/onglet masqué/survol/focus ; pas d’autoplay ni transitions avec mouvement réduit. État séparé pour ne pas rerendre la grille au rythme de l’animation. 124 tests passés ; ciblage sélection repassé après ajustement de casse des URLs ; lint sans erreur (17 avertissements locaux), build et vérifications visuelles/interactives Chromium réussis. Code destiné à la preview, Production et règles de paiement inchangées.

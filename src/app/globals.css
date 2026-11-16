@@ -157,3 +157,70 @@ h1, h2, h3 { text-wrap: balance; }
   .kind-filters button { padding-left: 6px; padding-right: 6px; }
   .genre-select { width: 100%; max-width: none; padding-right: 20px; }
 }
+
+/* Motion: a small coverflow deck, isolated from the catalogue rendering. */
+.feature-showcase { width: 100%; max-width: 520px; min-width: 0; justify-self: center; }
+.feature-stage { position: relative; width: 100%; height: 340px; overflow: clip; perspective: 1100px; transform-style: preserve-3d; transform: rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg)); transition: transform .4s ease-out; }
+.feature-halo { position: absolute; inset: 8% 0; background: radial-gradient(ellipse, #cc954328, transparent 65%); pointer-events: none; }
+.feature-poster { --offset: 0px; --angle: 0deg; --yaw: 0deg; --scale: 1; --depth: 0px; position: absolute; top: 50%; left: 50%; width: min(42%,190px); aspect-ratio: 2/3; z-index: 3; opacity: 1; transform: translate3d(calc(-50% + var(--offset)),-50%,var(--depth)) rotateY(var(--yaw)) rotateZ(var(--angle)) scale(var(--scale)); transition: transform .9s cubic-bezier(.22,.7,.2,1), opacity .7s ease; }
+.feature-poster[data-slot="-1"] { --offset: -115px; --angle: -13deg; --yaw: 10deg; --scale: .86; --depth: -55px; opacity: .62; z-index: 2; }
+.feature-poster[data-slot="1"] { --offset: 115px; --angle: 13deg; --yaw: -10deg; --scale: .86; --depth: -55px; opacity: .62; z-index: 1; }
+.feature-poster[data-slot="-2"] { --offset: -240px; --angle: -25deg; --yaw: 18deg; --scale: .65; --depth: -110px; opacity: 0; z-index: 0; pointer-events: none; }
+.feature-poster[data-slot="2"] { --offset: 240px; --angle: 25deg; --yaw: -18deg; --scale: .65; --depth: -110px; opacity: 0; z-index: 0; pointer-events: none; }
+.feature-poster a { display: block; height: 100%; width: 100%; border-radius: 9px; box-shadow: 0 24px 50px #0009; border: 1px solid #ffffff28; overflow: hidden; background: #202126; }
+.feature-poster[data-slot="0"] a { border-color: #e8b96b5a; }
+.feature-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.feature-poster-label { position: absolute; inset: auto 0 0; display: flex; justify-content: space-between; gap: 10px; padding: 24px 12px 10px; background: linear-gradient(transparent,#000c); color: #f1eadc; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; pointer-events: none; }
+.feature-poster-label span { color: var(--amber-bright); font-variant-numeric: tabular-nums; }
+.feature-bottom { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 24px 0; }
+.feature-caption { min-width: 0; flex: 1; animation: feature-caption-in .5s ease both; }
+.feature-caption p { color: #d1af77; font-size: 9px; letter-spacing: .09em; text-transform: uppercase; margin-bottom: 6px; }
+.feature-caption a { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #e9e4db; line-height: 1.5; }
+.feature-caption a { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: block; }
+.feature-caption a > span[aria-hidden] { color: var(--amber); padding-left: 8px; }
+.feature-caption a:hover { color: var(--amber-bright); }
+.feature-controls { flex: 0 0 auto; text-align: right; }
+.feature-counter { font-size: 9px; color: #92929a; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+.feature-counter > span { color: var(--amber-bright); }
+.feature-buttons { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 5px; }
+.feature-buttons button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #ffffff20; border-radius: 50%; color: #c4beb3; font-size: 14px; transition: color .2s, border-color .2s, background-color .2s; }
+.feature-buttons button:hover { border-color: #e8b96b85; background: #e8b96b12; color: var(--amber-bright); }
+.feature-progress { margin: 16px 24px 0; height: 1px; background: #ffffff10; overflow: hidden; }
+.feature-progress span { display: block; height: 100%; width: 100%; background: var(--amber); transform: scaleX(0); transform-origin: left; }
+.feature-showcase.is-running .feature-progress span { animation: feature-progress 5.5s linear both; }
+.feature-empty { align-self: center; max-width: 350px; padding: 35px; border: 1px solid var(--line); border-radius: 12px; color: #a4a3a9; font-size: 13px; line-height: 1.8; }
+.feature-empty > p:nth-child(2) { margin-top: 15px; }
+.cinema-hero .hero-copy > * { animation: hero-arrival .75s cubic-bezier(.2,.7,.3,1) both; }
+.cinema-hero .hero-copy > :nth-child(2) { animation-delay: .08s; }
+.cinema-hero .hero-copy > :nth-child(3) { animation-delay: .16s; }
+.cinema-hero .hero-copy > :nth-child(4) { animation-delay: .24s; }
+.cinema-hero .hero-copy > :nth-child(5) { animation-delay: .32s; }
+@keyframes feature-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes feature-caption-in { from { opacity: .3; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hero-arrival { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 800px) {
+  .feature-stage { height: 300px; }
+  .feature-poster { width: min(42%,165px); }
+  .feature-poster[data-slot="-1"] { --offset: -90px; }
+  .feature-poster[data-slot="1"] { --offset: 90px; }
+  .feature-bottom { padding-left: 6px; padding-right: 6px; }
+  .feature-caption p { font-size: 9px; }
+  .feature-caption a { font-size: 12px; }
+  .feature-progress { margin-left: 6px; margin-right: 6px; }
+}
+@media (max-width: 580px) {
+  .feature-showcase { max-width: 350px; margin: 18px auto 0; }
+  .feature-stage { height: 255px; }
+  .feature-poster { width: 148px; }
+  .feature-poster[data-slot="-1"] { --offset: -87px; }
+  .feature-poster[data-slot="1"] { --offset: 87px; }
+  .feature-bottom { min-height: 62px; gap: 12px; }
+  .feature-caption p { font-size: 9px; }
+  .feature-caption a { font-size: 13px; }
+  .feature-buttons button { width: 32px; height: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feature-stage { transform: none !important; }
+  .feature-poster, .feature-caption, .cinema-hero .hero-copy > * { animation: none !important; transition: none !important; }
+  .feature-progress { display: none; }
+}
