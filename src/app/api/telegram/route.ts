@@ -32,7 +32,10 @@ export async function POST(request: Request) {
   const post = update.edited_channel_post ?? update.channel_post;
   if (!post) return Response.json({ ok: true, ignored: true });
   if (post.chat?.type !== "channel" || String(post.chat?.id) !== channel) {
-    return Response.json({ error: "Canal non autorisé" }, { status: 403 });
+    // The same bot also administers the private Premium channel. A genuine
+    // Telegram update outside the public catalogue is acknowledged, not retried.
+    // The webhook secret has already been checked above; no content is saved.
+    return Response.json({ ok: true, ignored: true });
   }
   if (!Number.isSafeInteger(post.message_id) || post.message_id <= 0) return new Response(null, { status: 400 });
   if (!Number.isSafeInteger(post.edit_date ?? post.date)) return new Response(null, { status: 400 });

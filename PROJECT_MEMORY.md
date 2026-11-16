@@ -1,6 +1,19 @@
 # Mémoire du projet — The Browser
 
-Mise à jour : 15 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+Mise à jour : 16 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+
+## Point de reprise — travail repris le 16 novembre 2026
+
+Le propriétaire a explicitement demandé de reprendre le travail le 16 novembre 2026. La pause est levée. Conserver les paiements réels fermés et vérifier le déploiement avant toute activation de la connexion Telegram. Ce résumé décrit le dernier état ; les sections chronologiques plus bas conservent les anciens blocages, parfois déjà résolus.
+
+- **Code poussé sur `origin/main` : `d482240472b6ff1088fe7769d5c57cdc4d04a410`.** Connexion Telegram avec confirmation explicite, sessions sécurisées, commandes/paiements atomiques dans Redis, Checkout Stripe de test à 4,57 EUR. Les routes de paiement de test restent fermées en production. SasPay n’est pas encore intégré.
+- **Validations : 99 tests habituels, 12 tests Redis réel isolé, 1 test HTTP complet (API Stripe simulée), lint et build réussis.** Des sessions Stripe réelles en mode test ont été créées/lues puis expirées sans débit lors des étapes précédentes ; pas de paiement complet dans le navigateur validé.
+- **Redis réel fonctionne en lecture et scripting**, contrôlé sans écriture. `KV_REST_API_URL` et `KV_REST_API_TOKEN` sont configurés dans l’environnement ; ne pas redemander ces valeurs ou les recopier dans les fichiers.
+- **Canal privé et bot vérifiés par API** : canal `-1003958043288`, @Thebrowser365_bot administrateur avec invitation/restriction autorisées. Le catalogue public reste sur `-1004339801492`. La synchronisation des nouvelles saisons de The Big Bang Theory fonctionne selon le propriétaire.
+- **Vercel : déploiement du commit non confirmé.** Le push a réussi, mais le réseau de la machine bloque encore le site et api.github.com. Les domaines ont été ajoutés au brouillon, sans publication par l’agent ; leur application reste à vérifier à la reprise. Publier l’environnement cloud ne prouve pas le déploiement du site.
+- **Connexion Telegram réelle non activée/testée sur le site.** Vérifier les paramètres Vercel (`SITE_URL`, Redis, `PREMIUM_ENVIRONMENT=test`, drapeau d’authentification) et le secret existant du webhook, absent de cette machine au dernier contrôle. Déployer/vérifier le code avant d’activer la connexion et d’ajouter `message`/`callback_query` aux notifications existantes. Préserver l’URL, les notifications déjà souscrites et les mises à jour en attente.
+- **Aucun encaissement réel, invitation, retrait de membre ou changement réel du webhook effectué.** Les invitations/retraits automatisés restent à implémenter. Renouvellement, frais, fiscalité, remboursements et fuseau commercial restent à décider.
+- `.agents/` et `skills-lock.json` sont des outils installés localement, non inclus dans le commit applicatif. Les credentials CLI Stripe restent hors dépôt et ne doivent jamais être affichés. La session OAuth peut nécessiter une nouvelle connexion ; vérifier avant de la supposer active.
 
 ## Décisions produit en vigueur
 
@@ -163,11 +176,11 @@ Les nouveaux liens du catalogue utilisent les IDs déjà enregistrés : aucun r�
 
 ## Prochaine reprise
 
-1. Poursuivre la mise en place autorisée : le socle Premium et la simulation sont disponibles ; raccorder identité Telegram, stockage durable, prestataires et gestion des accès avant ouverture. Validation du socle : 80 tests, lint et build réussis ; huit scénarios HTTP simulés et désactivation en production vérifiés. Voir docs/payments.md pour les limites et la commande de démonstration.
-2. Suivre la validation du compte SasPay, préciser le statut du compte Stripe et vérifier les documentations officielles : pays couverts, MTN/Airtel au Congo-Brazzaville, cartes en Europe, versements vers la France et choix du prestataire selon le paiement. Ne pas supposer le renouvellement automatique disponible en Mobile Money.
-3. Définir la prise en charge des frais de paiement, le renouvellement, l’heure/le fuseau pour l’échéance mensuelle, retrait à expiration et remboursements.
-4. Définir le lien entre compte client, identité Telegram, paiement confirmé et accès au canal privé.
-5. Choisir ensuite les besoins de base de données et d’administration ; conserver le catalogue et la synchronisation existants.
+1. Reprise autorisée le 16 novembre 2026 : relire le résumé en tête de ce fichier, puis reprendre les vérifications ci-dessous.
+2. Vérifier l’application des domaines réseau déjà préparés et le statut Vercel du commit `d482240` ; diagnostiquer un éventuel échec de build avant d’affirmer que le code est en ligne.
+3. Vérifier les paramètres du projet Vercel et l’accès au secret existant du webhook. Activer et tester la connexion Telegram après déploiement, sans remplacer l’URL du webhook public ni supprimer ses notifications.
+4. Tester le parcours Stripe en mode test avec l’identité Telegram et Redis ; vérifier les vraies notifications externes. Ne pas ouvrir les encaissements réels.
+5. Réaliser ensuite les invitations/retraits du canal, puis SasPay, en précisant les règles commerciales encore ouvertes. Ne pas changer les tarifs retenus (3 000 XAF / 4,57 EUR) ni activer une reconduction sans décision du propriétaire.
 
 Mettre à jour cette mémoire après une décision ou livraison significative. Ne pas transformer une proposition ou une confirmation limitée à quelques messages en règle globale.
 
@@ -236,3 +249,19 @@ Après publication, le diagnostic `NODE_USE_ENV_PROXY=1 node scripts/check-premi
 Le propriétaire a explicitement demandé de déployer puis vérifier le parcours. Le dépôt de travail est synchronisé avec origin/main avant les nouveaux commits ; le test de permission de push est réussi (dry-run, sans création de branche distante). Les changements applicatifs doivent être poussés sur main pour l’intégration Git Vercel existante, en gardant les paiements réels fermés et l’authentification désactivée tant que ses paramètres Vercel ne sont pas vérifiés. Les compétences/outils locaux `.agents/` et `skills-lock.json` ne font pas partie du code à déployer.
 
 Le réseau de la machine bloque encore api.github.com et the-browser-one.vercel.app ; ces deux domaines ont été ajoutés au nouveau brouillon pour le suivi du déploiement. Sauvegarde du brouillon seulement, sans publication par l’agent. Une poussée Git ne constitue pas à elle seule la preuve d’une compilation ou d’un déploiement Vercel réussi. L’activation réelle de la connexion demande les paramètres Vercel et le secret existant du webhook Telegram ; ce secret n’est pas injecté ici.
+
+### Code poussé sur main — 15 novembre 2026
+
+Le commit applicatif `d482240472b6ff1088fe7769d5c57cdc4d04a410` (Premium, identité Telegram, Redis et pilote Stripe) a été poussé avec succès sur `origin/main`, sans force-push. Avant push : 99 tests, 12 tests Redis, 1 test HTTP, lint et build réussis ; contrôle des fichiers indexés sans motif de secret détecté. Les compétences installées `.agents/` et `skills-lock.json` restent locales, non incluses dans ce commit.
+
+Le statut du déploiement Vercel n’est pas confirmé : le proxy bloque encore le site public et api.github.com dans la machine actuelle. Leurs autorisations sont sauvegardées dans le nouveau brouillon, à appliquer par l’utilisateur. La connexion Telegram sur le site n’a pas été activée ni testée en réel ; les paramètres Vercel et le secret existant du webhook restent à vérifier. Aucun paiement réel ni modification des membres ou du webhook Telegram.
+
+### Reprise du 16 novembre 2026
+
+Le propriétaire a demandé de continuer. Le commit d482240 est toujours la pointe distante de main. Le site renvoie encore un refus CONNECT 403 du proxy : la politique effective de la machine n’autorise ni the-browser-one.vercel.app ni api.github.com, alors que les deux domaines sont déjà présents dans le brouillon. Ne pas réenregistrer les mêmes changements : l’utilisateur doit appliquer/publier le brouillon existant. Aucun nouveau déploiement, paiement ou changement de webhook effectué. Les accès Redis et bot restent liés ; VERCEL_TOKEN et TELEGRAM_WEBHOOK_SECRET ne sont pas injectés dans cette machine. Ne pas confondre leur absence ici avec leur configuration sur Vercel.
+
+### Webhook Telegram : erreur 403 et correction — 16 novembre 2026
+
+Le diagnostic getWebhookInfo confirme l’URL attendue, les types channel_post/edited_channel_post, une livraison en attente et une erreur récente « Wrong response from the webhook: 403 Forbidden » (2026-11-16T07:55:21Z). Aucun contenu de mise à jour n’a été lu ; ne pas supprimer le webhook ou ses livraisons pour enquêter.
+
+Le code avait un défaut identifié : après validation du secret, toute publication d’un autre canal renvoyait 403 et pouvait donc provoquer des retries, alors que le bot administre aussi le canal Premium. La route acquitte désormais ces mises à jour authentiques avec HTTP 200/ignored, sans les stocker. Le canal public conserve sa logique et un mauvais secret reste refusé avec HTTP 401. Le contenu exact de la livraison en attente reste inconnu ; ne pas affirmer que sa cause est prouvée avant vérification après déploiement.

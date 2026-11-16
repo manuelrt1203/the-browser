@@ -73,6 +73,15 @@ test('Parcours HTTP : Telegram confirmé → commande Redis propriétaire → we
     const publication=await telegram({channel_post:{message_id:999,date:Math.floor(Date.now()/1000),chat:{id:-1004339801492,type:'channel'},text:''}});
     assert.equal(publication.status,200);
     assert.ok((await command(['HLEN','the-browser:telegram:-1004339801492']))>0);
+    const publicCount=await command(['HLEN','the-browser:telegram:-1004339801492']);
+    for(const channelId of [-1003958043288,-1009999999999]) {
+      const ignored=await telegram({channel_post:{message_id:1000,date:Math.floor(Date.now()/1000),chat:{id:channelId,type:'channel'},text:'Private channel publication'}});
+      assert.equal(ignored.status,200);assert.equal((await ignored.json()).ignored,true);
+      assert.equal(await command(['HLEN',`the-browser:telegram:${channelId}`]),0);
+    }
+    assert.equal(await command(['HLEN','the-browser:telegram:-1004339801492']),publicCount);
+    const unauthorized=await post('/api/telegram',{update_id:updateId++,channel_post:{chat:{id:-1003958043288,type:'channel'}}},{'x-telegram-bot-api-secret-token':'wrong-fixture-secret'});
+    assert.equal(unauthorized.status,401,'Ignorer un canal ne doit jamais contourner le secret du webhook');
     assert.equal((await post('/api/premium/auth/logout',{}, {cookie})).status,200);
     assert.equal((await fetch(origin+'/api/premium/auth/session',{headers:{cookie}}).then(r=>r.json())).status,'anonymous');
     assert.equal((await fetch(origin+`/api/stripe/test/status?order=${orderId}`,{headers:{cookie}})).status,401);

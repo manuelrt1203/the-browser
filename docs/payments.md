@@ -161,3 +161,9 @@ Aucun déploiement du site, aucun `setWebhook` réel, aucune invitation ni modif
 ### Contrôle Redis réel réussi — 15 novembre 2026
 
 Après configuration sécurisée et publication de l’environnement, le diagnostic de lecture et de scripting Redis réussit dans l’espace test, avec writes=false. Aucune donnée n’a été modifiée. L’ancien blocage de configuration Redis est levé ; il reste à déployer le nouveau code sur Vercel, puis à activer et vérifier la connexion Telegram avant le parcours complet de paiement.
+
+## Pause et reprise — 15 novembre 2026
+
+Le propriétaire a demandé de poursuivre plus tard. Le code a été poussé sur main (`d482240`), mais la réussite du déploiement Vercel n’est pas confirmée. Redis réel est maintenant accessible ; ne pas reprendre l’ancien diagnostic de jeton manquant. Les contrôles passent (99 tests, 12 tests Redis, 1 test HTTP, lint/build). Aucun paiement réel, accès de membre ou changement réel de webhook.
+
+À la reprise : contrôler le déploiement et les domaines réseau déjà en brouillon, vérifier les paramètres Vercel et le secret existant du webhook, puis activer/tester la connexion Telegram et le paiement de test. Les invitations/retraits et SasPay restent à réaliser. La pause n’autorise aucune nouvelle publication ou activation automatique. Le résumé à jour est en tête de PROJECT_MEMORY.md.

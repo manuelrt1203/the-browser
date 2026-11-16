@@ -175,3 +175,7 @@ Les commandes privées et `callback_query` passent par le même `POST /api/teleg
 Les jetons de navigateur sont aléatoires, en cookie HttpOnly/SameSite=Lax et Secure en HTTPS ; Redis ne conserve que leurs hashes SHA-256. Les demandes expirent en dix minutes et une confirmation consomme le code une seule fois. La session dure au maximum 24 heures (durée technique de connexion, pas durée d’abonnement). La déconnexion la révoque dans Redis. `SITE_URL` doit correspondre à l’origine exacte du site/preview pour les contrôles anti-CSRF. Les espaces test/réel et les noms de cookies sont distincts (`PREMIUM_ENVIRONMENT=test` par défaut).
 
 Le flux réel nécessite que le code soit déployé sur l’URL déjà enregistrée chez Telegram et utilise la même base Redis que le site. Le paiement Stripe reste un pilote local ; cette connexion ne donne pas encore d’invitation ou d’accès payant automatique au canal privé.
+
+## Publications d’autres canaux — correction du 16 novembre 2026
+
+Après validation du secret, une publication du canal privé Premium ou d’un autre canal est acquittée HTTP 200 avec ignored=true, sans écriture dans le catalogue. Cela évite des retries inutiles quand le bot administre plusieurs canaux. Un mauvais secret reste refusé HTTP 401. L’erreur 403 récente observée dans getWebhookInfo est compatible avec l’ancien refus des autres canaux, mais le contenu de la livraison n’a pas été inspecté ; la disparition de l’erreur et de l’attente reste à contrôler après déploiement.
