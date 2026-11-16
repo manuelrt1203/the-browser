@@ -17,19 +17,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --max-time 30 \
+          identity_status=$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' \
             --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fthe-browser-one.vercel.app%2Fapi%2Fpremium%2Faccess%2Fexpire" \
-            --output identity.json
+            --output identity.json)
+          if [ "$identity_status" != 200 ]; then
+            echo "::error title=GitHub identity::HTTP $identity_status"
+            exit 1
+          fi
           ACCESS_TOKEN=$(python3 -c 'import json; print(json.load(open("identity.json"))["value"])')
           echo "::add-mask::$ACCESS_TOKEN"
+          python3 -c 'import base64,json; j=json.load(open("identity.json"))["value"].split(".")[1]; c=json.loads(base64.urlsafe_b64decode(j+"="*(-len(j)%4))); d={k:c.get(k) for k in ["iss","aud","repository","repository_owner","ref","sub","workflow_ref","event_name"]}; d["lifetime"]=c["exp"]-c["iat"]; print("::notice title=Maintenance identity::"+json.dumps(d))'
           rm identity.json
           cursor=0
           for batch in $(seq 1 100); do
-            curl --fail --silent --show-error --max-time 60 \
+            status=$(curl --silent --show-error --max-time 60 --write-out '%{http_code}' \
               --request POST --header "Authorization: Bearer $ACCESS_TOKEN" \
               "https://the-browser-one.vercel.app/api/premium/access/expire?cursor=$cursor" \
-              --output response.json
+              --output response.json)
+            if [ "$status" != 200 ]; then
+              echo "::error title=Membership endpoint::HTTP $status"
+              exit 1
+            fi
             cursor=$(python3 -c 'import json; d=json.load(open("response.json")); c=d["cursor"]; assert isinstance(c,str) and c.isdigit(); assert d["failed"] == 0, "Membership actions need retry"; print(c)')
             if [ "$cursor" = 0 ]; then exit 0; fi
           done
