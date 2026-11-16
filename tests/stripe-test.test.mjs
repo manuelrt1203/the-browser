@@ -15,7 +15,9 @@ function fixtures() {
 }
 
 test('Checkout : 457 centimes, paiement ponctuel, référence serveur et retour local seulement', () => {
-  const params = testCheckoutParameters(randomUUID(), 'http://127.0.0.1:3001');
+  const oldEnv=process.env.NODE_ENV;process.env.NODE_ENV='development';
+  let params;try { params = testCheckoutParameters(randomUUID(), 'http://127.0.0.1:3001'); }
+  finally { if(oldEnv===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=oldEnv; }
   assert.equal(params.mode, 'payment');
   assert.equal(params.line_items[0].price_data.unit_amount, 457);
   assert.equal(params.line_items[0].price_data.currency, 'eur');
@@ -26,10 +28,10 @@ test('Checkout : 457 centimes, paiement ponctuel, référence serveur et retour 
 });
 
 test('pilote Stripe : fermé en production, sur Vercel et dans l’espace réel', () => {
-  const names=['NODE_ENV','STRIPE_TEST_CHECKOUT_ENABLED','PREMIUM_ENVIRONMENT','VERCEL'];
+  const names=['NODE_ENV','STRIPE_TEST_CHECKOUT_ENABLED','PREMIUM_ENVIRONMENT','VERCEL','VERCEL_ENV'];
   const old=Object.fromEntries(names.map(n=>[n,process.env[n]]));
   try {
-    process.env.NODE_ENV='development';process.env.STRIPE_TEST_CHECKOUT_ENABLED='1';process.env.PREMIUM_ENVIRONMENT='test';delete process.env.VERCEL;
+    process.env.NODE_ENV='development';process.env.STRIPE_TEST_CHECKOUT_ENABLED='1';process.env.PREMIUM_ENVIRONMENT='test';process.env.VERCEL_ENV='production';delete process.env.VERCEL;
     assert.equal(stripeTestEnabled(),true);
     process.env.PREMIUM_ENVIRONMENT='live';assert.equal(stripeTestEnabled(),false);
     process.env.PREMIUM_ENVIRONMENT='test';process.env.NODE_ENV='production';assert.equal(stripeTestEnabled(),false);

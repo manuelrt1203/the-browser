@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { PREMIUM_OFFERS, confirmPremiumPayment } from "./subscription.ts";
 import type { PremiumOrder } from "./subscription.ts";
+import { paymentTestRuntime, paymentTestOrigin } from "./payment-test-runtime.ts";
 
 export type StripeTestOrder = PremiumOrder & {
   sessionId: string;
@@ -9,8 +10,7 @@ export type StripeTestOrder = PremiumOrder & {
 };
 
 export function stripeTestEnabled() {
-  return process.env.NODE_ENV === "development" && !process.env.VERCEL &&
-    process.env.STRIPE_TEST_CHECKOUT_ENABLED === "1" && (process.env.PREMIUM_ENVIRONMENT ?? "test") === "test";
+  return paymentTestRuntime("STRIPE_TEST_CHECKOUT_ENABLED");
 }
 
 export function stripeTestClient() {
@@ -21,10 +21,7 @@ export function stripeTestClient() {
 }
 
 export function testCheckoutParameters(orderId: string, origin: string): Stripe.Checkout.SessionCreateParams {
-  const url = new URL(origin);
-  if (!((url.hostname === "127.0.0.1" || url.hostname === "localhost") && url.protocol === "http:")) {
-    throw new Error("Le parcours Stripe de test est réservé au serveur local");
-  }
+  const url = new URL(paymentTestOrigin(origin));
   return {
     mode: "payment",
     client_reference_id: orderId,

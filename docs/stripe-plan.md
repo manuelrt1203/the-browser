@@ -26,7 +26,7 @@ Le plan préconise Checkout hébergé pour un paiement ponctuel, un produit/prix
 - Événements : `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`. Un completed encore impayé reste en attente. Une notification répétée ne prolonge pas l’échéance ; un échec tardif ne révoque pas un paiement déjà confirmé.
 - `GET /api/stripe/test/status` : état de la commande, uniquement après connexion Telegram et contrôle du propriétaire. Aucune clé renvoyée.
 - Commandes, liaison des sessions et confirmations dans Redis via `premium-redis.ts`, avec contrôle atomique et unicité des paiements. Le stockage fichier initial a été retiré des routes et du code.
-- Page et trois API renvoient 404 hors développement local, même avec le drapeau activé. Aucun droit Telegram réel.
+- Page et trois API renvoient 404 en production, même avec le drapeau activé. Elles sont disponibles en développement local ou dans une prévisualisation Vercel explicitement configurée en mode test. Aucun droit Telegram réel.
 
 ## Démarrage local
 
@@ -78,3 +78,7 @@ Authentifier et associer l’identité Telegram ; stockage durable transactionne
 Les routes Stripe de test exigent désormais la session Telegram côté serveur. Une commande existante d’un autre compte est refusée, même si le navigateur fournit son UUID. Le prix et le propriétaire ne sont pas lus dans le corps client. Le webhook signé rapproche la session Stripe avec la commande puis appelle la confirmation atomique Redis ; les résultats impayés sont enregistrés sans pouvoir annuler une confirmation ultérieure. Le fichier local de commandes a été retiré, sans suppression des anciens fichiers de données de la machine.
 
 Validation actuelle : 99 tests habituels, 12 tests d’intégration Redis et un test du parcours HTTP complet avec Next.js + Redis réel + API Stripe simulée. Ce test couvre connexion, consentement Telegram, refus inter-comptes, signature altérée, paiement confirmé une seule fois, déconnexion et conservation du traitement du canal public. Il n’est pas une nouvelle validation du parcours Stripe externe ni un déploiement.
+
+## Prévisualisation Vercel — 16 novembre 2026
+
+Le même pilote peut désormais être ouvert dans une prévisualisation (`VERCEL=1`, `VERCEL_ENV=preview`), seulement avec l’espace test et le drapeau explicite. SITE_URL doit être exactement l’origine de la prévisualisation ; la vérification de l’origine ne fait pas confiance au Host fourni par le client. Le site Vercel de production reste fermé aux paiements de test. Ne pas promouvoir une prévisualisation de test comme vente opérationnelle. Les variables sensibles doivent être configurées dans le bon environnement Vercel ; leur présence dans la machine cloud ne les configure pas sur Vercel. La connexion Vercel officielle reste à autoriser. Voir docs/saspay.md pour le raccordement Mobile Money complémentaire.

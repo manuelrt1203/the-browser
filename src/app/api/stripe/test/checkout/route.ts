@@ -2,12 +2,14 @@ import { stripeTestClient, stripeTestEnabled, testCheckoutParameters } from "@/l
 import { premiumIdentity } from "@/lib/premium-session";
 import { premiumRedis, validPremiumOrderId } from "@/lib/premium-redis";
 import { PREMIUM_OFFERS } from "@/lib/subscription";
+import { isPremiumSameOrigin } from "@/lib/premium-auth";
 
 export async function POST(request: Request) {
   if (!stripeTestEnabled()) return new Response(null, { status: 404 });
   const origin = request.headers.get("origin");
-  const expected = `${new URL(request.url).protocol}//${request.headers.get("host")}`;
-  if (!origin || origin !== expected) return Response.json({ error: "Origine refusée" }, { status: 403 });
+  try {
+    if (!origin || !isPremiumSameOrigin(request)) return Response.json({ error: "Origine refusée" }, { status: 403 });
+  } catch { return Response.json({ error: "Origine de test non configurée" }, { status: 503 }); }
   const id = request.headers.get("idempotency-key") ?? "";
   if (!validPremiumOrderId(id)) return Response.json({ error: "Identifiant de tentative invalide" }, { status: 400 });
   if (!process.env.STRIPE_WEBHOOK_SECRET) {

@@ -1,6 +1,6 @@
 # Paiements — décisions et mise en place
 
-Statut au 15 novembre 2026 : **SasPay et Stripe retenus ; compte SasPay en attente de validation**, selon la confirmation du propriétaire. Tarif fixé le 15 novembre 2026 : **3 000 XAF par mois, ou son équivalent arrondi de 4,57 EUR**. Le renouvellement et la prise en charge des frais de paiement restent à définir. Un pilote Stripe local en mode test est implémenté ; aucun encaissement réel activé.
+Statut au 16 novembre 2026 : **SasPay et Stripe retenus ; compte SasPay en attente de validation**, selon la confirmation du propriétaire. Tarif fixé le 15 novembre 2026 : **3 000 XAF par mois, ou son équivalent arrondi de 4,57 EUR**. Le renouvellement et la prise en charge des frais de paiement restent à définir. Les pilotes Stripe et SasPay sont implémentés en mode test ; aucun encaissement réel activé.
 
 ## Première étape implémentée — 15 novembre 2026
 
@@ -37,7 +37,7 @@ Validation : 80 tests réussis, lint et build réussis ; huit scénarios HTTP (d
 - Un canal privé distinct pour les clients.
 - @TheBrowser365 reste public pour la découverte.
 - Activité exercée depuis la France, clients notamment au **Congo-Brazzaville (République du Congo)**. Objectif : proposer l’abonnement dans tous les pays, sous réserve de la couverture effective des prestataires.
-- Prestataires retenus : **SasPay** (https://app.saspay.me) **et Stripe**. Le compte SasPay est en attente de validation selon le propriétaire ; le statut du compte Stripe reste inconnu. Stripe dispose maintenant d’un pilote local de test ; SasPay n’est pas intégré.
+- Prestataires retenus : **SasPay** (https://app.saspay.me) **et Stripe**. Le compte SasPay est en attente de validation selon le propriétaire ; le compte Stripe est prêt selon le propriétaire et son accès de test est vérifié. Les deux prestataires disposent de pilotes de test ; SasPay reste à valider contre un vrai compte SANDBOX.
 - Moyens requis au Congo-Brazzaville : **MTN Mobile Money et Airtel Money**. Leur prise en charge effective par SasPay pour ce pays reste à vérifier.
 - Période mensuelle : abonnement commencé le **10 → expiration le 10 du mois suivant**. Si la date n’existe pas dans le mois suivant (29–31), expiration au **dernier jour de ce mois**, conformément à la confirmation du propriétaire. Exemple : 31 janvier → 28 février (29 en année bissextile).
 - Accès au **canal premium après confirmation du paiement**.
@@ -167,3 +167,9 @@ Après configuration sécurisée et publication de l’environnement, le diagnos
 Le propriétaire a demandé de poursuivre plus tard. Le code a été poussé sur main (`d482240`), mais la réussite du déploiement Vercel n’est pas confirmée. Redis réel est maintenant accessible ; ne pas reprendre l’ancien diagnostic de jeton manquant. Les contrôles passent (99 tests, 12 tests Redis, 1 test HTTP, lint/build). Aucun paiement réel, accès de membre ou changement réel de webhook.
 
 À la reprise : contrôler le déploiement et les domaines réseau déjà en brouillon, vérifier les paramètres Vercel et le secret existant du webhook, puis activer/tester la connexion Telegram et le paiement de test. Les invitations/retraits et SasPay restent à réaliser. La pause n’autorise aucune nouvelle publication ou activation automatique. Le résumé à jour est en tête de PROJECT_MEMORY.md.
+
+## Raccordement SasPay — 16 novembre 2026
+
+Le pilote SasPay Mobile Money est développé à 3000 XAF pour MTN/Airtel Congo-Brazzaville, avec identité Telegram et stockage Redis. Les réseaux sont obtenus du référentiel actif, pas devinés. Paiement direct idempotent et confirmation via signature + vérification prestataire ; aucun succès depuis le seul navigateur. La récupération d’un paiement confirmé avant sa liaison locale est testée. Voir [docs/saspay.md](saspay.md).
+
+Les essais locaux sont simulés côté SasPay. La production reste fermée ; seuls le développement local et une prévisualisation Vercel explicitement configurée peuvent ouvrir les pilotes avec des clés de test. Il reste à connecter le compte Vercel, activer la connexion Telegram, fournir la clé SANDBOX SasPay et son secret de notification, puis effectuer les vrais essais. Les invitations/retraits du canal et les paiements réels ne sont pas activés.

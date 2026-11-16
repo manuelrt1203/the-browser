@@ -5,6 +5,7 @@ export type StoredPremiumOrder = PremiumOrder & {
   telegramUserId: string;
   environment: "test" | "live";
   providerSessionId?: string;
+  providerCheckoutUrl?: string;
 };
 
 export class PremiumStorageError extends Error {
@@ -101,6 +102,10 @@ export function premiumRedis(environment: "test" | "live") {
       const expected = createPremiumOrder(id, value.provider);
       if (value.currency !== expected.currency || value.amountMinor !== expected.amountMinor) throw new Error();
       if (value.providerSessionId !== undefined) providerIdentifier(value.providerSessionId);
+      if (value.providerCheckoutUrl !== undefined) {
+        const url = new URL(value.providerCheckoutUrl);
+        if (value.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== "pay.saspay.me" || url.username || url.password || url.port) throw new Error();
+      }
       if (value.status === "confirmed" && (!value.providerSessionId || !value.confirmedPaymentId || !value.startsAt || !value.expiresAt ||
           !Number.isFinite(Date.parse(value.startsAt)) || !Number.isFinite(Date.parse(value.expiresAt)) ||
           Date.parse(value.expiresAt) <= Date.parse(value.startsAt))) throw new Error();
@@ -115,6 +120,15 @@ export function premiumRedis(environment: "test" | "live") {
 
   async function getOrder(id: string): Promise<StoredPremiumOrder | null> { return (await load(id))?.order ?? null; }
 
+  async function findBySession(provider: PaymentProvider, sessionId: string) {
+    const id = await command(["GET", sessionKey(provider, sessionId)]);
+    if (id === null) return null;
+    if (typeof id !== "string" || !validPremiumOrderId(id)) throw new PremiumStorageError("CORRUPT");
+    const order = await getOrder(id);
+    if (!order || order.provider !== provider || order.providerSessionId !== sessionId) throw new PremiumStorageError("CORRUPT");
+    return order;
+  }
+
   /** telegramUserId MUST come from a verified login, not a client-supplied ID. */
   async function createOrder(id: string, telegramUserId: string, provider: PaymentProvider) {
     if (!validTelegramId(telegramUserId) || !["stripe", "saspay"].includes(provider)) throw new PremiumStorageError("IDENTITY");
@@ -125,13 +139,19 @@ export function premiumRedis(environment: "test" | "live") {
     return saved;
   }
 
-  async function bindSession(id: string, sessionId: string) {
+  async function bindSession(id: string, sessionId: string, checkoutUrl?: string) {
     providerIdentifier(sessionId);
     for (let attempt = 0; attempt < 8; attempt++) {
       const current = await load(id);
       if (!current) throw new PremiumStorageError("MISSING");
       if (current.order.providerSessionId && current.order.providerSessionId !== sessionId) throw new PremiumStorageError("SESSION_CONFLICT");
-      const updated = { ...current.order, providerSessionId: sessionId };
+      if (checkoutUrl !== undefined) {
+        const url = new URL(checkoutUrl);
+        if (current.order.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== "pay.saspay.me" || url.username || url.password || url.port) throw new PremiumStorageError("REDIRECT");
+        if (current.order.providerCheckoutUrl && current.order.providerCheckoutUrl !== checkoutUrl) throw new PremiumStorageError("SESSION_CONFLICT");
+      }
+      const updated = { ...current.order, providerSessionId: sessionId,
+        ...(checkoutUrl === undefined ? {} : { providerCheckoutUrl: checkoutUrl }) };
       const result = await command(["EVAL", BIND, 2, orderKey(id), sessionKey(updated.provider, sessionId), current.raw, JSON.stringify(updated), id]);
       if (result === "RETRY") continue;
       if (result !== "OK") throw new PremiumStorageError(String(result));
@@ -187,5 +207,5 @@ export function premiumRedis(environment: "test" | "live") {
     }
     throw new PremiumStorageError("CONTENTION");
   }
-  return { createOrder, getOrder, bindSession, confirmPayment, activeOrders, markUnpaid };
+  return { createOrder, getOrder, bindSession, confirmPayment, activeOrders, markUnpaid, findBySession };
 }
