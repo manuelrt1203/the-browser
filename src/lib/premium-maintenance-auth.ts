@@ -27,7 +27,9 @@ export async function validGithubMaintenanceToken(token: string, keys = githubKe
       (claims.nbf === undefined || (Number.isFinite(claims.nbf) && claims.nbf <= seconds + 60)) &&
       claims.iss === "https://token.actions.githubusercontent.com" && claims.aud === audience &&
       claims.repository === "manuelrt1203/the-browser" && claims.repository_owner === "manuelrt1203" &&
-      claims.ref === "refs/heads/main" && claims.sub === "repo:manuelrt1203/the-browser:ref:refs/heads/main" &&
+      String(claims.repository_id) === "1455838466" && String(claims.repository_owner_id) === "230215107" &&
+      claims.ref === "refs/heads/main" && ["repo:manuelrt1203/the-browser:ref:refs/heads/main",
+        "repo:manuelrt1203@230215107/the-browser@1455838466:ref:refs/heads/main"].includes(claims.sub) &&
       claims.workflow_ref === "manuelrt1203/the-browser/.github/workflows/premium-expiration.yml@refs/heads/main" &&
       ["schedule", "workflow_dispatch"].includes(claims.event_name);
   } catch { return false; }

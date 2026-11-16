@@ -27,7 +27,6 @@ jobs:
           fi
           ACCESS_TOKEN=$(python3 -c 'import json; print(json.load(open("identity.json"))["value"])')
           echo "::add-mask::$ACCESS_TOKEN"
-          python3 -c 'import base64,json; j=json.load(open("identity.json"))["value"].split(".")[1]; c=json.loads(base64.urlsafe_b64decode(j+"="*(-len(j)%4))); d={k:c.get(k) for k in ["iss","aud","repository","repository_owner","ref","sub","workflow_ref","event_name"]}; d["lifetime"]=c["exp"]-c["iat"]; print("::notice title=Maintenance identity::"+json.dumps(d))'
           rm identity.json
           cursor=0
           for batch in $(seq 1 100); do
