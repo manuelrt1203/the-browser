@@ -21,10 +21,14 @@ Le verrou Redis par utilisateur est limité à 120 secondes ; les sauvegardes v�
 - `PREMIUM_TELEGRAM_ACCESS_ENABLED=1` **et** `PREMIUM_ENVIRONMENT=live` sont requis. Le drapeau est à 0 par défaut. Les tests restent interdits même avec le drapeau à 1.
 - Garder l’authentification Telegram activée et les deux canaux distincts. En Production live, `PREMIUM_TELEGRAM_TEST_AUTH_ENABLED=1` permet aussi les confirmations de la preview test dans un espace Redis séparé, sans droits réels pour ces sessions. Bot administrateur du canal privé, avec invitation et restriction.
 - Activer `PREMIUM_ACCESS_GITHUB_OIDC_ENABLED=1` pour le workflow signé : issuer token.actions.githubusercontent.com, audience URL exacte de maintenance, dépôt et workflow exacts, ref main, événement schedule/workflow_dispatch, signature RSA-SHA256 et dates vérifiées. Aucun secret GitHub à recopier. Pour un autre ordonnanceur, utiliser le secret manuel sécurisé.
-- Déployer et valider le service avant d’ajouter `chat_join_request` aux notifications existantes via le script `telegram-webhook.mjs --register`. Celui-ci conserve les anciennes notifications, l’URL et les livraisons en attente. Aucun de ces changements distants n’a été effectué ici.
+- Déployer et valider le service avant d’ajouter `chat_join_request` aux notifications existantes via le script `telegram-webhook.mjs --register`. Celui-ci conserve les anciennes notifications, l’URL et les livraisons en attente. Ces changements sont déployés et activés au 16 novembre 2026 ; voir le résultat du workflow dans PROJECT_MEMORY.md. Les paiements réels restent fermés.
 - Valider les adaptateurs de paiement live, les règles commerciales et les erreurs/reprises avant de passer l’environnement en live. Les pilotes Stripe/SasPay actuels restent des pilotes de test, pas des adaptateurs live.
 - Tester le cycle réel dans un canal dédié avant activation sur le canal commercial, avec autorisation de créer des invitations et modifier ses membres.
 
 ## Validation locale
 
 Tests du service avec bot simulé : refus test/autre propriétaire/paiement incomplet/expiré, lien transmis, approbation idempotente, renouvellement, reprise après échec de retrait, administrateur protégé, verrou perdu. Test Redis réel isolé : confirmation différée pendant verrou live et libération après erreur. Parcours HTTP : les nouvelles routes restent 404 dans le pilote test même si le drapeau d’accès est à 1. Aucun appel réel de modification des membres.
+
+## Livraison vérifiée
+
+Production activée le 16 novembre 2026. Le contrôle GitHub Actions [43964370019](https://github.com/manuelrt1203/the-browser/actions/runs/43964370019) a réussi avec un index vide. L’identité inclut les IDs immuables du propriétaire et du dépôt ; les formats de subject historique et contenant les IDs sont acceptés avec ces IDs vérifiés. Admission/retrait de membres réels non exercés à ce stade.
