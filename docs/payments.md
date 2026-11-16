@@ -196,3 +196,10 @@ Vercel Hobby confirmé ; contrôle d’expiration via GitHub Actions toutes les 
 
 Validation : 119 tests habituels, 15 résultats d’intégration Redis réel/HTTP, lint sans erreur (avertissements des compétences locales) et build réussis ; test ciblé OIDC repassé après correction. Paiements réels toujours fermés et adaptateurs live non raccordés : le paiement Stripe test précédent ne donne aucun accès réel. Les règles commerciales restantes et le cycle réel invitation/retrait restent à valider avant ouverture des ventes. SasPay reste bloqué sur sa signature externe, voir rapport support.
 
+
+
+## Renouvellement manuel et espace abonnement — 16 novembre 2026
+
+Décision confirmée : renouvellement manuel, aucun prélèvement/reconduction automatique. Le propriétaire ne dispose pas des informations professionnelles/contact demandées ; aucune identité, adresse ou e-mail inventé. Il choisit aucune garantie commerciale de remboursement supplémentaire, sans suppression des droits légaux. Conditions, remboursements et support préparés avec avertissement ventes fermées ; trame complète et points à compléter dans docs/commercial-terms-draft.md. SUPPORT_EMAIL peut être renseigné lorsqu’une adresse opérationnelle existe. Ouverture des ventes toujours reportée ; achat anticipé/frais/fiscalité/fuseau contractuel restent à préciser.
+
+Espace /mon-abonnement et API privée /api/premium/subscription implémentés : propriétaire issu uniquement de la session Telegram, historique/statut/échéance sans identifiants prestataire ni identité Telegram exposée, Cache-Control private,no-store. Échéances affichées dans le fuseau de l’appareil. Le bouton d’accès nécessite une période live active et le service activé ; les paiements test restent des démonstrations sans droits réels. Ne pas présenter un renouvellement anticipé ou un cumul de périodes comme implémenté.

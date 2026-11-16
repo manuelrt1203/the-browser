@@ -75,6 +75,12 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
     const networks=await fetch(origin+'/api/saspay/test/networks',{headers:{cookie}}).then(r=>r.json());assert.equal(networks.networks.length,2);
     assert.equal((await post('/api/premium/access',{}, {cookie})).status,404,'un paiement test ne permet jamais une invitation réelle');
     assert.equal((await post('/api/premium/access/expire',{})).status,404,'aucun retrait réel depuis le pilote test');
+    const subscriptionResponse=await fetch(origin+'/api/premium/subscription',{headers:{cookie}});assert.equal(subscriptionResponse.status,200);assert.ok(subscriptionResponse.headers.get('cache-control').includes('no-store'));
+    const subscription=await subscriptionResponse.json();assert.equal(subscription.status,'active');assert.equal(subscription.renewal,'manual');assert.equal(subscription.channelAccessAvailable,false);assert.equal(subscription.orders[0].id,orderId);
+    assert.equal(JSON.stringify(subscription).includes('telegramUserId'),false);assert.equal(JSON.stringify(subscription).includes('providerSessionId'),false);
+    assert.equal((await fetch(origin+'/api/premium/subscription')).status,401);
+    const otherSubscription=await fetch(origin+'/api/premium/subscription?telegramUserId=12345&environment=live',{headers:{cookie:otherCookie}}).then(r=>r.json());assert.deepEqual(otherSubscription.orders,[]);assert.equal(otherSubscription.environment,'test');
+    for(const page of ['/mon-abonnement','/conditions','/remboursements','/support'])assert.equal((await fetch(origin+page)).status,200);
     const sasOrder=randomUUID();const customer={firstName:'Test',lastName:'Client',email:'client@example.com',phone:'+242061234567',network:'fixture_mtn_cg',amount:1,telegramUserId:'54321'};
     const sasResponse=await post('/api/saspay/test/payment',customer,{cookie,'idempotency-key':sasOrder});assert.equal(sasResponse.status,200);const sas=await sasResponse.json();assert.equal(sas.status,'pending');
     const sasReplay=await post('/api/saspay/test/payment',customer,{cookie,'idempotency-key':sasOrder}).then(r=>r.json());assert.equal(sasReplay.checkoutUrl,sas.checkoutUrl);

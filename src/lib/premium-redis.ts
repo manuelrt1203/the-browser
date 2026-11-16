@@ -186,13 +186,17 @@ export function premiumRedis(environment: "test" | "live") {
     throw new PremiumStorageError("CONTENTION");
   }
 
-  async function activeOrders(telegramUserId: string, now = new Date()) {
-    if (!validTelegramId(telegramUserId) || !Number.isFinite(now.getTime())) throw new PremiumStorageError("IDENTITY");
+  async function listOrders(telegramUserId: string) {
+    if (!validTelegramId(telegramUserId)) throw new PremiumStorageError("IDENTITY");
     const ids = await command(["SMEMBERS", `${prefix}:user:${telegramUserId}:orders`]);
     if (!Array.isArray(ids) || ids.some(id => typeof id !== "string" || !validPremiumOrderId(id))) throw new PremiumStorageError("CORRUPT");
     const orders = await Promise.all(ids.map(id => getOrder(id)));
     if (orders.some(order => !order || order.telegramUserId !== telegramUserId)) throw new PremiumStorageError("CORRUPT");
-    return orders.filter((order): order is StoredPremiumOrder => Boolean(order && hasPremiumAccess(order, now)));
+    return orders as StoredPremiumOrder[];
+  }
+  async function activeOrders(telegramUserId: string, now = new Date()) {
+    if (!Number.isFinite(now.getTime())) throw new PremiumStorageError("IDENTITY");
+    return (await listOrders(telegramUserId)).filter(order => hasPremiumAccess(order, now));
   }
   async function markUnpaid(id: string, sessionId: string, status: "failed" | "cancelled") {
     if (status !== "failed" && status !== "cancelled") throw new PremiumStorageError("STATUS");
@@ -209,5 +213,5 @@ export function premiumRedis(environment: "test" | "live") {
     }
     throw new PremiumStorageError("CONTENTION");
   }
-  return { createOrder, getOrder, bindSession, confirmPayment, activeOrders, markUnpaid, findBySession };
+  return { createOrder, getOrder, bindSession, confirmPayment, activeOrders, listOrders, markUnpaid, findBySession };
 }

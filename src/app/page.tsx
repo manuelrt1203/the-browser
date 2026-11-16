@@ -58,6 +58,7 @@ export default function Home() {
           <Link href="/premium" className="mt-6 inline-block rounded-lg border border-sky-300/40 px-5 py-3 font-medium text-sky-200 hover:bg-sky-300/10">
             Découvrir Premium
           </Link>
+          <Link href="/mon-abonnement" className="ml-5 text-sky-200 underline">Mon abonnement</Link>
         </div>
       </header>
 
@@ -70,6 +71,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-white/10 px-4 py-6 text-center text-xs text-white/50">
+        <nav className="mb-4 flex flex-wrap justify-center gap-5 text-sky-200"><Link href="/conditions">Conditions de vente</Link><Link href="/remboursements">Remboursements</Link><Link href="/support">Support</Link></nav>
         <p>
           Données de films et séries fournies par TMDB. Ce produit utilise
           l&apos;API TMDB mais n&apos;est ni approuvé ni certifié par TMDB.

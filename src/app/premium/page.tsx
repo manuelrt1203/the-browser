@@ -25,10 +25,12 @@ export default function PremiumPage() {
         <ul className="mt-6 space-y-3 text-white/80">
           <li>Un abonnement commencé le 10 expire le 10 du mois suivant.</li>
           <li>Si la date n’existe pas, expiration le dernier jour du mois suivant.</li>
+          <li>Renouvellement manuel : aucun prélèvement automatique.</li>
           <li>Le catalogue public reste accessible à tous.</li>
         </ul>
         <p className="mt-6 rounded-lg bg-white/5 p-4 text-sm text-amber-100">Ouverture prochainement. Les paiements ne sont pas encore disponibles.</p>
       </section>
+      <Link href="/mon-abonnement" className="mt-6 inline-block text-sky-300 underline">Mon abonnement</Link>
       {demo && <PremiumDemo />}
       {premiumAuthEnabled() && <TelegramAccount />}
       {premiumChannelAccessEnabled() && <PremiumChannelAccess />}
