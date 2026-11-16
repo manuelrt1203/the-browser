@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "geist": "1.9.2",
     "next": "16.4.6",
     "react": "19.3.0",
