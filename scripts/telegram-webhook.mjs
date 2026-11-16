@@ -1,7 +1,10 @@
 // Aucun jeton n’est imprimé, y compris en cas d’erreur réseau.
 import { premiumTelegramUpdates } from './telegram-updates.mjs';
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+const rotating = process.argv.includes('--rotate-secret');
+if (rotating && !process.argv.includes('--register')) throw new Error('--rotate-secret nécessite --register explicite.');
+const secret = rotating ? process.env.TELEGRAM_WEBHOOK_SECRET_NEXT : process.env.TELEGRAM_WEBHOOK_SECRET;
+if (rotating && !secret) throw new Error('Configurer TELEGRAM_WEBHOOK_SECRET_NEXT avant la rotation.');
 const channelId = process.env.TELEGRAM_CHANNEL_ID;
 const origin = process.env.SITE_URL;
 if (!token || !secret || !channelId || !origin) throw new Error('Définir TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, TELEGRAM_CHANNEL_ID et SITE_URL côté serveur.');

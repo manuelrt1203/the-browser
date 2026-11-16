@@ -13,7 +13,9 @@ globalThis.fetch = async (input, options = {}) => {
   const url = new URL(typeof input === 'string' ? input : input.url ?? input.toString());
   if (url.hostname === 'premium-redis.invalid') {
     const args = JSON.parse(options.body);
-    const { stdout } = await execFile(process.env.REDIS_TEST_CLI, ['-s',process.env.PREMIUM_TEST_REDIS_SOCKET,'--json',...args.map(String)]);
+    // Upstash REST uses RESP2-style flat arrays for HGETALL; redis-cli --json
+    // otherwise defaults to RESP3 maps, which would change the wire contract.
+    const { stdout } = await execFile(process.env.REDIS_TEST_CLI, ['-s',process.env.PREMIUM_TEST_REDIS_SOCKET,'-2','--json',...args.map(String)]);
     return Response.json({ result: JSON.parse(stdout) });
   }
   if (url.hostname === 'api.stripe.com') {

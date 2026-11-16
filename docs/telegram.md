@@ -179,3 +179,16 @@ Le flux réel nécessite que le code soit déployé sur l’URL déjà enregistr
 ## Publications d’autres canaux — correction du 16 novembre 2026
 
 Après validation du secret, une publication du canal privé Premium ou d’un autre canal est acquittée HTTP 200 avec ignored=true, sans écriture dans le catalogue. Cela évite des retries inutiles quand le bot administre plusieurs canaux. Un mauvais secret reste refusé HTTP 401. L’erreur 403 récente observée dans getWebhookInfo est compatible avec l’ancien refus des autres canaux, mais le contenu de la livraison n’a pas été inspecté ; la disparition de l’erreur et de l’attente reste à contrôler après déploiement.
+
+## Rotation progressive du secret — préparée le 16 novembre 2026
+
+Le propriétaire ne peut plus récupérer l’ancien secret et a autorisé son remplacement. Le code accepte désormais temporairement TELEGRAM_WEBHOOK_SECRET (actuel) et TELEGRAM_WEBHOOK_SECRET_NEXT (nouveau) pour les publications, le diagnostic et la revalidation du cache. Aucun secret vide n’est accepté. Cette compatibilité permet de laisser le secret actuel dans Vercel sans le lire.
+
+Ordre d’application après connexion administrateur Vercel :
+
+1. Ajouter le nouveau secret dans le champ sensible TELEGRAM_WEBHOOK_SECRET_NEXT, en conservant le champ actuel tel quel, puis déployer le code acceptant les deux valeurs.
+2. Vérifier que le diagnostic du site accepte le nouveau secret et que les publications actuelles continuent de fonctionner. Un nouveau secret est préparé hors dépôt dans un fichier privé, jamais imprimé.
+3. Basculer Telegram seulement après cette vérification, via `node scripts/telegram-webhook.mjs --register --rotate-secret`, avec NEXT injecté et l’activation Premium appropriée. Le script refuse la rotation sans --register, refuse un NEXT absent, contrôle la santé du site avant setWebhook, conserve l’URL et les notifications existantes, et ne supprime pas les mises à jour en attente.
+4. Contrôler les livraisons, puis remplacer la valeur principale dans Vercel par la nouvelle et retirer le champ NEXT lors d’un déploiement final. Ne plus conserver inutilement l’ancien secret accepté.
+
+À ce stade : préparation et tests uniquement, aucune valeur Vercel ou configuration Telegram changée. Le réseau bloque encore la connexion officielle Vercel tant que les domaines déjà préparés ne sont pas appliqués.

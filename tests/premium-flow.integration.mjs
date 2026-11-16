@@ -30,6 +30,7 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
         NODE_ENV:'development',PREMIUM_ENVIRONMENT:'test',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',SITE_URL:origin,
         KV_REST_API_URL:'https://premium-redis.invalid',KV_REST_API_TOKEN:'local-fixture-token',
         TELEGRAM_CHANNEL_ID:'-1004339801492',TELEGRAM_WEBHOOK_SECRET:'telegram_fixture_secret',
+        TELEGRAM_WEBHOOK_SECRET_NEXT:'telegram_fixture_next_secret',
         STRIPE_TEST_CHECKOUT_ENABLED:'1',STRIPE_SECRET_KEY_TEST:'sk_test_fixture_not_a_real_key',STRIPE_WEBHOOK_SECRET:webhookSecret,
         SASPAY_TEST_ENABLED:'1',SASPAY_API_KEY_TEST:'sk_test_fixture_not_a_real_key',SASPAY_WEBHOOK_SECRET:'saspay_local_fixture_secret',
         VERCEL:'',NODE_USE_ENV_PROXY:'0',NODE_OPTIONS:''},stdio:['ignore','pipe','pipe']});
@@ -93,6 +94,9 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
     const publication=await telegram({channel_post:{message_id:999,date:Math.floor(Date.now()/1000),chat:{id:-1004339801492,type:'channel'},text:''}});
     assert.equal(publication.status,200);
     assert.ok((await command(['HLEN','the-browser:telegram:-1004339801492']))>0);
+    const nextHealth=await fetch(origin+'/api/telegram',{headers:{'x-telegram-bot-api-secret-token':'telegram_fixture_next_secret'}});assert.equal(nextHealth.status,200);
+    const nextPublication=await post('/api/telegram',{update_id:updateId++,channel_post:{message_id:1001,date:Math.floor(Date.now()/1000),chat:{id:-1004339801492,type:'channel'},text:''}},{'x-telegram-bot-api-secret-token':'telegram_fixture_next_secret'});
+    assert.equal(nextPublication.status,200,'le nouveau secret doit fonctionner avant de retirer l’ancien');
     const publicCount=await command(['HLEN','the-browser:telegram:-1004339801492']);
     for(const channelId of [-1003958043288,-1009999999999]) {
       const ignored=await telegram({channel_post:{message_id:1000,date:Math.floor(Date.now()/1000),chat:{id:channelId,type:'channel'},text:'Private channel publication'}});

@@ -1,20 +1,17 @@
-import { timingSafeEqual } from "node:crypto";
 import { revalidateTag } from "next/cache";
 import { hasCatalogueStorage, readChannelState, saveChannelPost } from "@/lib/telegram-store";
 
 import { RESOLUTION_VERSION, resolvePublication } from "@/lib/telegram-resolution";
 import { premiumTelegramReply } from "@/lib/premium-auth";
+import { hasTelegramWebhookSecret, validTelegramWebhookSecret } from "@/lib/telegram-webhook-secret";
 
 
 export async function POST(request: Request) {
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
   const channel = process.env.TELEGRAM_CHANNEL_ID;
-  if (!secret || !channel || !hasCatalogueStorage()) {
+  if (!hasTelegramWebhookSecret() || !channel || !hasCatalogueStorage()) {
     return Response.json({ error: "Synchronisation non configurée" }, { status: 503 });
   }
-  const supplied = Buffer.from(request.headers.get("x-telegram-bot-api-secret-token") ?? "");
-  const expected = Buffer.from(secret);
-  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+  if (!validTelegramWebhookSecret(request.headers.get("x-telegram-bot-api-secret-token") ?? "")) {
     return Response.json({ error: "Non autorisé" }, { status: 401 });
   }
   const body = await request.text();
@@ -69,11 +66,8 @@ export async function POST(request: Request) {
 
 /** Diagnostic authentifié, sans divulgation des messages ou des secrets. */
 export async function GET(request: Request) {
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!secret || !hasCatalogueStorage()) return Response.json({ ok: false }, { status: 503 });
-  const supplied = Buffer.from(request.headers.get("x-telegram-bot-api-secret-token") ?? "");
-  const expected = Buffer.from(secret);
-  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return new Response(null, { status: 401 });
+  if (!hasTelegramWebhookSecret() || !hasCatalogueStorage()) return Response.json({ ok: false }, { status: 503 });
+  if (!validTelegramWebhookSecret(request.headers.get("x-telegram-bot-api-secret-token") ?? "")) return new Response(null, { status: 401 });
   try {
     const state = await readChannelState();
     const posts = Object.values(state.posts);
