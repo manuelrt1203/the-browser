@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
@@ -19,7 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="fr"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><a href="#contenu" className="skip-link">Aller au contenu</a><SiteHeader /><div id="contenu" tabIndex={-1} className="flex min-w-0 flex-1 flex-col">{children}</div><SiteFooter /></body>
+      <body className="min-h-full flex flex-col"><a href="#contenu" className="skip-link">Aller au contenu</a><SiteHeader /><div id="contenu" tabIndex={-1} className="flex min-w-0 flex-1 flex-col">{children}</div><SiteFooter /><Suspense fallback={null}><MobileNavigation /></Suspense></body>
     </html>
   );
 }

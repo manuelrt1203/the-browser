@@ -57,3 +57,14 @@ export function publicationsForTitle(titleId: string, posts: Record<string, Chan
   }
   return [...distinct.values()];
 }
+
+/** Message IDs order publications within this channel; edits never make an old post new. */
+export function latestPublicationIdForTitle(titleId: string, posts: Record<string, ChannelPost>): number | undefined {
+  let latest = 0;
+  for (const [key,post] of Object.entries(posts)) {
+    const match = key.match(/^(-100\d+):(\d+)$/);
+    if (!match || Number(match[2]) !== post.messageId || !telegramMessageUrl(match[1],post.messageId)) continue;
+    if (post.titles.some(ref => `${ref.kind}-${ref.id}` === titleId)) latest = Math.max(latest,post.messageId);
+  }
+  return latest || undefined;
+}

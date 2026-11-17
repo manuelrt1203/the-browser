@@ -2,6 +2,7 @@
 import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { PointerEvent } from "react";
 import type { Title } from "@/data/catalogue";
+import { catalogueHref } from "@/lib/catalogue-browsing";
 import { featuredReleases, posterSlot } from "@/lib/featured-releases";
 import type { FeaturedRelease } from "@/lib/featured-releases";
 const INTERVAL = 5500;
@@ -15,14 +16,15 @@ function visibilitySubscribe(callback: () => void) {
 }
 const visibleSnapshot = () => !document.hidden;
 
-function CarouselDeck({ items }: { items: FeaturedRelease[] }) {
+type CarouselProps = { items: Title[]; suspended?: boolean; onOpenTitle: (id: string) => void; catalogueQuery: string };
+function CarouselDeck({ items, suspended, onOpenTitle, catalogueQuery }: Omit<CarouselProps, "items"> & { items: FeaturedRelease[] }) {
   const [current, setCurrent] = useState(0), [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false), [inView, setInView] = useState(true);
   const [announcement, setAnnouncement] = useState("");
   const reduced = useSyncExternalStore(motionSubscribe, reducedSnapshot, () => true);
   const visible = useSyncExternalStore(visibilitySubscribe, visibleSnapshot, () => false);
   const root = useRef<HTMLDivElement>(null), stage = useRef<HTMLDivElement>(null), frame = useRef<number | null>(null);
-  const running = items.length > 1 && !reduced && !paused && !hovered && !focused && visible && inView;
+  const running = !suspended && items.length > 1 && !reduced && !paused && !hovered && !focused && visible && inView;
   useEffect(() => {
     if (!running) return;
     const timer = window.setInterval(() => setCurrent(index => (index + 1) % items.length), INTERVAL);
@@ -72,9 +74,9 @@ function CarouselDeck({ items }: { items: FeaturedRelease[] }) {
         const slot = posterSlot(index, current, items.length);
         if (slot === null) return null;
         return <div key={item.id} className="feature-poster" data-slot={slot} aria-hidden={index !== current}>
-          <a href={item.telegramUrl} target="_blank" rel="noopener noreferrer" tabIndex={index === current ? 0 : -1} aria-label={`Ouvrir ${item.title} dans le canal Telegram — nouvel onglet`}
+          <a href={catalogueHref(new URLSearchParams(catalogueQuery), { fiche: item.id, focus: null })} tabIndex={index === current ? 0 : -1} aria-label={`Voir la fiche de ${item.title}`}
             onPointerDown={event => { if (index !== current) event.preventDefault(); }}
-            onClick={event => { if (index !== current) { event.preventDefault(); select(index); } }}>
+            onClick={event => { if (index !== current) { event.preventDefault(); select(index); } else if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); onOpenTitle(item.id); } }}>
             {/* Affiches déjà redimensionnées par le CDN TMDB. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.poster} alt="" width={400} height={600} loading={Math.abs(slot) < 2 ? "eager" : "lazy"} fetchPriority={slot === 0 ? "high" : "auto"} referrerPolicy="no-referrer" />
@@ -86,7 +88,7 @@ function CarouselDeck({ items }: { items: FeaturedRelease[] }) {
     <div className="feature-bottom">
       <div className="feature-caption" key={active.id}>
         <p>2026 · Disponible dans le canal</p>
-        <a href={active.telegramUrl} target="_blank" rel="noopener noreferrer">{active.title}<span aria-hidden="true">↗</span><span className="sr-only"> — ouvrir dans Telegram, nouvel onglet</span></a>
+        <a href={catalogueHref(new URLSearchParams(catalogueQuery), { fiche: active.id, focus: null })} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); onOpenTitle(active.id); } }}>{active.title}<span aria-hidden="true">↗</span><span className="sr-only"> — voir la fiche</span></a>
       </div>
       {items.length > 1 && <div className="feature-controls">
         <span className="feature-counter"><span>{String(current + 1).padStart(2, "0")}</span> / {String(items.length).padStart(2, "0")}</span>
@@ -103,8 +105,8 @@ function CarouselDeck({ items }: { items: FeaturedRelease[] }) {
     <span className="sr-only" aria-live="polite">{announcement}</span>
   </div>;
 }
-export const CinemaCarousel = memo(function CinemaCarousel({ items }: { items: Title[] }) {
+export const CinemaCarousel = memo(function CinemaCarousel({ items, suspended = false, onOpenTitle, catalogueQuery }: CarouselProps) {
   const releases = useMemo(() => featuredReleases(items), [items]);
   if (!releases.length) return <div className="feature-empty"><p className="eyebrow">Sélection 2026</p><p>Les titres de 2026 seront présentés ici dès leur publication dans le canal.</p><a href="#catalogue" className="button-secondary">Explorer le catalogue →</a></div>;
-  return <CarouselDeck key={releases.map(item => item.id).join("|")} items={releases} />;
+  return <CarouselDeck key={releases.map(item => item.id).join("|")} items={releases} suspended={suspended} onOpenTitle={onOpenTitle} catalogueQuery={catalogueQuery} />;
 });

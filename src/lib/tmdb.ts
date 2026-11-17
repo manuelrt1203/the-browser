@@ -1,4 +1,4 @@
-import { publicationsForTitle, sortCatalogue } from "./catalogue-links.ts";
+import { publicationsForTitle, sortCatalogue, latestPublicationIdForTitle } from "./catalogue-links.ts";
 import { cacheLife, cacheTag } from "next/cache";
 import type { Kind, Title } from "@/data/catalogue";
 import { requestedTitles, revokedLegacyReferences } from "@/data/selection";
@@ -137,6 +137,7 @@ export async function getCatalogue(): Promise<Title[]> {
         const publications = publicationsForTitle(title.id, storedPosts);
         if (publications.length) {
           title.telegramUrl = publications[0].url;
+          title.latestPublicationId = latestPublicationIdForTitle(title.id, storedPosts);
           title.telegramPublications = publications;
         }
         titles.push(title);

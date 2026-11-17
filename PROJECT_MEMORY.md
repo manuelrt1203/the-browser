@@ -421,3 +421,10 @@ Commit local 0981f9c, preview dpl_EJH5Gskq4UxTwgsugb1NuJn3Z5gP confirmée Ready 
 ### Motion design du hero — 17 novembre 2026
 
 Le propriétaire approuve la refonte ambrée et demande des affiches tournantes pour les sorties phares de 2026 présentes dans le canal. Coverflow implémenté dans CinemaCarousel : sélection stricte année2026 + affiche + lien réel vers TheBrowser365 ou c/4339801492, dédupliquée, sans classement fictif ; 23 titres éligibles observés. Flèches/clavier/pause, progression, inclinaison au pointeur, entrée du texte. Pause hors écran/onglet masqué/survol/focus ; pas d’autoplay ni transitions avec mouvement réduit. État séparé pour ne pas rerendre la grille au rythme de l’animation. 124 tests passés ; ciblage sélection repassé après ajustement de casse des URLs ; lint sans erreur (17 avertissements locaux), build et vérifications visuelles/interactives Chromium réussis. Code destiné à la preview, Production et règles de paiement inchangées.
+
+Preview motion : commit local f563014, déploiement dpl_Y13E4SA83GtnTATZy9exPnNMdzL8 Ready et alias de test réaffecté. Contrôle distant HTTP200, carrousel/sélection2026/commandes et CSS motion/mouvement réduit présents. Code non poussé sur main ; site public inchangé.
+
+
+### Ergonomie du catalogue — 17 novembre 2026
+
+Accord utilisateur pour poursuivre les améliorations : fiches détaillées partageables (dialogue natif), filtres recherche/type/genre/année/vue dans l’URL, Ajouts récents selon dernière publication Telegram valide, favoris À voir locaux à ce navigateur et navigation mobile inférieure. Métadonnées de saisons/épisodes exactes et provenance conservées. Aucun changement des paiements, droits ou ventes. 129 tests unitaires, build, lint sans erreur et essais Chromium ordinateur/mobile réussis. Prévisualisation à livrer sur l’alias existant ; main/Production non modifiés.
