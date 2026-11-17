@@ -434,3 +434,7 @@ Livraison UX preview : commit local 4071be1, déploiement dpl_UNEbEEb1XjkLqJPgWp
 ### Rotation automatique demandée — 17 novembre 2026
 
 Le propriétaire veut une rotation continue sans commande pause. Bouton pause supprimé ; survol, focus et navigation manuelle ne suspendent plus le défilement de 5,5s. Flèches conservées, focus redirigé avant masquage du lien actif. Mouvement réduit système respecté ; pause technique hors écran, onglet masqué ou fiche ouverte conservée. Build et lint sans erreur (17 avertissements locaux), Chromium valide rotation au survol et après navigation/focus, absence de pause et mouvement réduit. Preview dpl_ACre6a516o9EmxR3QFgiJ8gX8eSo Ready ; alias stable en cours de réaffectation. Production/main inchangés.
+
+### Publication du design et de l’ergonomie — 17 novembre 2026
+
+Le propriétaire autorise explicitement la publication et le déploiement de cette version. Commits de refonte, motion, fiches/favoris/filtres/navigation mobile et rotation sans pause poussés sur main jusqu’à d2a7e4c. Déploiement Production dpl_CZUHoszL6M22Q3DQpDRaWpqeWTBH confirmé Ready et associé à https://the-browser-one.vercel.app. Accueil, Premium, mon-abonnement et conditions HTTP200 ; carrousel, fiches, ajouts récents et navigation mobile présents, bouton pause absent. Règles de paiement et d’accès inchangées. Cette publication remplace les mentions « preview uniquement » des entrées de design précédentes.
