@@ -33,3 +33,8 @@ Fiches détaillées dans un dialogue natif accessible : synopsis complet, public
 Recherche, type, genre, année et vue sont conservés dans l’URL ; rechargement et partage restituent ces filtres. Vue Ajouts récents triée par identifiant de dernière publication Telegram valide, indépendante de l’année de sortie et de l’édition d’un ancien message. À voir est une liste locale au navigateur, sans compte ni synchronisation, avec gestion des erreurs de stockage. Navigation mobile fixe : catalogue, recherche, À voir et compte, avec respect des zones de sécurité.
 
 Validation : 129 tests unitaires réussis, build et lint sans erreur (17 avertissements dans les compétences locales). Chromium réel : ouverture par carte et URL directe, fermeture Échap, favoris persistants, filtres après rechargement, focus de recherche mobile ; aucun débordement à 390 et 320 px. Rendu des fiches inspecté sur ordinateur et mobile.
+
+
+### Défilement automatique continu
+
+À la demande du propriétaire, le bouton pause est supprimé. Le survol, le focus et la navigation manuelle n’arrêtent plus la rotation de 5,5 secondes. Les flèches restent disponibles. Le réglage système de mouvement réduit est respecté ; les animations invisibles (onglet masqué, hors écran, fiche ouverte) restent suspendues. Le focus d’un lien qui sort de l’affiche active est reporté sur la commande suivante pour ne pas rester dans un contenu masqué.

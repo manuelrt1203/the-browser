@@ -18,16 +18,23 @@ const visibleSnapshot = () => !document.hidden;
 
 type CarouselProps = { items: Title[]; suspended?: boolean; onOpenTitle: (id: string) => void; catalogueQuery: string };
 function CarouselDeck({ items, suspended, onOpenTitle, catalogueQuery }: Omit<CarouselProps, "items"> & { items: FeaturedRelease[] }) {
-  const [current, setCurrent] = useState(0), [paused, setPaused] = useState(false);
-  const [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false), [inView, setInView] = useState(true);
+  const [current, setCurrent] = useState(0);
+  const [inView, setInView] = useState(true);
   const [announcement, setAnnouncement] = useState("");
   const reduced = useSyncExternalStore(motionSubscribe, reducedSnapshot, () => true);
   const visible = useSyncExternalStore(visibilitySubscribe, visibleSnapshot, () => false);
   const root = useRef<HTMLDivElement>(null), stage = useRef<HTMLDivElement>(null), frame = useRef<number | null>(null);
-  const running = !suspended && items.length > 1 && !reduced && !paused && !hovered && !focused && visible && inView;
+  const running = !suspended && items.length > 1 && !reduced && visible && inView;
   useEffect(() => {
     if (!running) return;
-    const timer = window.setInterval(() => setCurrent(index => (index + 1) % items.length), INTERVAL);
+    const timer = window.setInterval(() => {
+      const focusedLink = document.activeElement;
+      if (focusedLink instanceof Element && root.current?.contains(focusedLink) &&
+          (focusedLink.closest(".feature-poster") || focusedLink.closest(".feature-caption"))) {
+        root.current.querySelector<HTMLButtonElement>("[data-carousel-next]")?.focus();
+      }
+      setCurrent(index => (index + 1) % items.length);
+    }, INTERVAL);
     return () => clearInterval(timer);
   }, [running, items.length]);
   useEffect(() => {
@@ -44,7 +51,7 @@ function CarouselDeck({ items, suspended, onOpenTitle, catalogueQuery }: Omit<Ca
     if (document.activeElement === activeLink || caption?.contains(document.activeElement)) {
       root.current?.querySelector<HTMLButtonElement>('[data-carousel-next]')?.focus();
     }
-    setCurrent(next); setPaused(true);
+    setCurrent(next);
     setAnnouncement(`${items[next].title}, ${next + 1} sur ${items.length}.`);
   }
   function resetTilt() {
@@ -65,8 +72,7 @@ function CarouselDeck({ items, suspended, onOpenTitle, catalogueQuery }: Omit<Ca
   }
   const active = items[current];
   return <div ref={root} className={`feature-showcase${running ? " is-running" : ""}`} role="region" aria-roledescription="carrousel" aria-label="Sorties de 2026 disponibles dans le canal" aria-live="off"
-    onPointerEnter={event => { if (event.pointerType === "mouse") setHovered(true); }} onPointerLeave={() => { setHovered(false); resetTilt(); }}
-    onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false); }}
+    onPointerLeave={resetTilt}
     onKeyDown={event => { if (items.length < 2) return; if (event.key === "ArrowRight") { event.preventDefault(); select(current + 1); } if (event.key === "ArrowLeft") { event.preventDefault(); select(current - 1); } }}>
     <div className="feature-stage" ref={stage} onPointerMove={tilt} onPointerLeave={resetTilt}>
       <div className="feature-halo" aria-hidden="true" />
@@ -94,9 +100,6 @@ function CarouselDeck({ items, suspended, onOpenTitle, catalogueQuery }: Omit<Ca
         <span className="feature-counter"><span>{String(current + 1).padStart(2, "0")}</span> / {String(items.length).padStart(2, "0")}</span>
         <div className="feature-buttons">
           <button type="button" aria-label="Affiche précédente" onClick={() => select(current - 1)}>←</button>
-          {!reduced && <button type="button" aria-label={paused ? "Reprendre le défilement" : "Mettre le défilement en pause"} aria-pressed={paused} onClick={() => { setPaused(value => !value); setFocused(false); }}>
-            {paused ? <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="m5 3 8 5-8 5z"/></svg> : <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3h3v10H4zm5 0h3v10H9z"/></svg>}
-          </button>}
           <button type="button" data-carousel-next="" aria-label="Affiche suivante" onClick={() => select(current + 1)}>→</button>
         </div>
       </div>}
