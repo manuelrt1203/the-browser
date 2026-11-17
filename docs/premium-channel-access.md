@@ -32,3 +32,7 @@ Tests du service avec bot simulé : refus test/autre propriétaire/paiement inco
 ## Livraison vérifiée
 
 Production activée le 16 novembre 2026. Le contrôle GitHub Actions [43964370019](https://github.com/manuelrt1203/the-browser/actions/runs/43964370019) a réussi avec un index vide. L’identité inclut les IDs immuables du propriétaire et du dépôt ; les formats de subject historique et contenant les IDs sont acceptés avec ces IDs vérifiés. Admission/retrait de membres réels non exercés à ce stade.
+
+## Canal isolé pour les essais de suppression
+
+Destination communiquée par le propriétaire le 17 novembre 2026 : https://t.me/c/4375412351/2, soit l’identifiant Bot API `-1004375412351`. Elle remplace la destination de test précédemment indiquée. Vérifier le bot administrateur avec invitation/restriction et utiliser un compte de test non administrateur. Ne pas remplacer le canal commercial dans les variables de production ; aucune suppression n’est autorisée par la seule communication de cette adresse.

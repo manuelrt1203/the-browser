@@ -438,3 +438,7 @@ Le propriétaire veut une rotation continue sans commande pause. Bouton pause su
 ### Publication du design et de l’ergonomie — 17 novembre 2026
 
 Le propriétaire autorise explicitement la publication et le déploiement de cette version. Commits de refonte, motion, fiches/favoris/filtres/navigation mobile et rotation sans pause poussés sur main jusqu’à d2a7e4c. Déploiement Production dpl_CZUHoszL6M22Q3DQpDRaWpqeWTBH confirmé Ready et associé à https://the-browser-one.vercel.app. Accueil, Premium, mon-abonnement et conditions HTTP200 ; carrousel, fiches, ajouts récents et navigation mobile présents, bouton pause absent. Règles de paiement et d’accès inchangées. Cette publication remplace les mentions « preview uniquement » des entrées de design précédentes.
+
+### Nouveau canal de test de suppression — 17 novembre 2026
+
+Le propriétaire fournit https://t.me/c/4375412351/2 comme canal Telegram de test pour la suppression. Identifiant Bot API correspondant : -1004375412351 (le /2 désigne un message). Cette destination remplace le canal de test précédemment communiqué -1004423200257 pour les prochains essais. Accès du bot, droits d’administration et présence d’un compte non administrateur à vérifier avant toute mutation. Aucun retrait effectué et aucune variable du canal Premium commercial modifiée à cette étape.
