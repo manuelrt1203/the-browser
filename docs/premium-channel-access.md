@@ -36,3 +36,5 @@ Production activée le 16 novembre 2026. Le contrôle GitHub Actions [4396437001
 ## Canal isolé pour les essais de suppression
 
 Destination communiquée par le propriétaire le 17 novembre 2026 : https://t.me/c/4375412351/2, soit l’identifiant Bot API `-1004375412351`. Elle remplace la destination de test précédemment indiquée. Vérifier le bot administrateur avec invitation/restriction et utiliser un compte de test non administrateur. Ne pas remplacer le canal commercial dans les variables de production ; aucune suppression n’est autorisée par la seule communication de cette adresse.
+
+Essai réel du 17 novembre 2026 autorisé par le propriétaire : membre non administrateur retiré de ce canal par le service expire (ban puis unban), état Telegram final left, nouvel appel ignoré. Fiche expirée et stockage locaux isolés, commandes absentes simulant l’absence de droit actif ; aucune écriture Redis de production ni changement du canal commercial. Le cycle complet d’admission et le déclenchement planifié de ce cas restent à vérifier.
