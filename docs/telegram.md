@@ -206,3 +206,14 @@ Les médias sont copiés par Telegram, sans téléchargement des vidéos dans le
 
 
 Copie exécutée le19novembre2026 à la demande du propriétaire : Tout le monde déteste Chris (TMDB252),88 épisodes des saisons1–4 vers Streaming Premium (-1003958043288), affiche TMDB en message4. Une interruption sur S04E03 a nécessité une remise en ordre : épisodes3–22 confirmés en messages92–111,19 anciennes copies4–22 retirées après confirmation de leurs remplacements. Audit du registre terminé :88 épisodes uniques,22 par saison et ordre conservé. Sources publiques inchangées.
+
+
+## Commandes privées de copie — propriétaire du canal
+
+En Production, TELEGRAM_COPY_ENABLED=1 active /copier TITRE (film ou série du canal public) et /copie (suivi). Les messages doivent provenir d’une conversation privée avec l’utilisateur lui-même ; les groupes, messages de bots et autres membres sont exclus. Le rôle creator est relu via getChatMember sur les canaux Premium et source ; un administrateur ordinaire n’est pas autorisé. TELEGRAM_COPY_ADMIN_IDS permet une liste explicite de comptes opérateurs supplémentaires, côté serveur uniquement. Le rôle est vérifié à la demande et à chaque reprise.
+
+Exemples : /copier série Tout le monde déteste Chris, /copier film La Belle et la Bête 2017. Variantes sans slash et suffixe « vers le canal premium » acceptés. La recherche s’appuie sur les titres/alias/années déjà identifiés et sur les fichiers vidéo du catalogue. En cas d’homonyme, le bot propose des commandes /copier film-ID ou serie-ID ; aucun homonyme choisi arbitrairement. Aucun canal de destination n’est accepté dans le message : source et destination restent configurées sur le serveur.
+
+Le webhook enregistre la demande atomiquement et répond immédiatement. Le traitement démarre avec after() dans Next, avec budget de100s et maxDuration300s. La file Redis the-browser:{telegram-copy-jobs}:queue et les checkpoints permettent une continuation par POST /api/telegram/copy/run, protégé par l’authentification de maintenance. Une tâche cron-job.org dédiée chaque minute assure les reprises après fin de budget ou interruption. Verrou global de240s, une seule copie à la fois, déduplication des update_id et d’une tâche active par titre. Les vidéos et affiches réutilisent le registre durable des copies opérateur, donc Chris n’est pas renvoyé.
+
+Affiche TMDB et vidéos envoyées silencieusement ; légendes d’origine conservées. Le bot répond au demandeur à la fin et /copie reste disponible. Un429 explicite remet l’envoi en attente après retry_after ; un envoi sans réponse confirmée reste réservé et suspend le titre, sans retry aveugle. La reprise d’un tel envoi exige son identifiant Premium exact après rapprochement. Les erreurs de rôles ou d’envoi ne donnent aucun droit Premium ni ne suppriment les originaux.

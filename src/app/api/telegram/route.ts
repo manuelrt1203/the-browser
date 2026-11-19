@@ -5,7 +5,10 @@ import { hasCatalogueStorage, readChannelState, saveChannelPost } from "@/lib/te
 import { RESOLUTION_VERSION, resolvePublication } from "@/lib/telegram-resolution";
 import { premiumTelegramReply } from "@/lib/premium-auth";
 import { hasTelegramWebhookSecret, validTelegramWebhookSecret } from "@/lib/telegram-webhook-secret";
+import { after } from "next/server";
+import { telegramCopyService } from "@/lib/telegram-copy";
 
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const channel = process.env.TELEGRAM_CHANNEL_ID;
@@ -35,6 +38,12 @@ export async function POST(request: Request) {
   }
   if (update.message || update.callback_query) {
     try {
+      const copier = telegramCopyService();
+      const copy = await copier.command(update);
+      if (copy) {
+        if (copy.wake) after(() => copier.worker().catch(() => {}));
+        return Response.json(copy.reply);
+      }
       const reply = await premiumTelegramReply(update);
       return Response.json(reply ?? { ok: true, ignored: true });
     } catch { return Response.json({ error: "Connexion non enregistrée, réessayer" }, { status: 503 }); }

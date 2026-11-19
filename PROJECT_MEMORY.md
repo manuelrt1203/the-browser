@@ -10,6 +10,12 @@ Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriét
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Source code de paiement vérifiée : 153 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
+## Commandes de copie dans Telegram — 19 novembre 2026
+
+Demandées : /copier film/série vers Premium, affiche incluse ; utilisateur ajoute explicitement le propriétaire du canal. Implémentation : /copier TITRE et /copie en privé, uniquement aux propriétaires Telegram actuels (creator du canal Premium ou source) et aux IDs opérateur explicitement configurés. Source et Premium ont le même propriétaire, vérifié par getChatAdministrators ; aucun administrateur ordinaire autorisé par défaut. Reconnaissance exacte type/alias/année, ambiguïtés proposées au lieu d’un choix arbitraire.
+
+File durable/checkpoints Redis et verrou global ; déduplication de livraison Telegram et registre vidéo/affiche existant. after() lance un premier lot, worker privé protégé par maintenance prévu chaque minute pour les longues copies. Pas de répétition d’un envoi ambigu ni de validation humaine sans identifiant exact. Originaux et accès Premium conservés. Déploiement/configuration encore en cours ; aucun nouveau film/série envoyé pour les tests. Tests locaux : autorisations, concurrence, reprises, doublons,429, envoi incertain et révocation de propriété vérifiés dans Redis isolé ; webhook HTTP avec paiements existants vérifié.
+
 ## Copie de Tout le monde déteste Chris — 19 novembre 2026, terminée
 
 Demande explicite du propriétaire : copier les vidéos vers le Premium et ajouter l’affiche. Source -1004339801492, destination réelle -1003958043288 (Streaming Premium), bot @Thebrowser365_bot administrateur avec publication vérifié. Série TMDB252,88 fichiers vidéo, saisons1–4 à22 épisodes chacune. Copie serveur Telegram copyMessage avec légendes, envois silencieux et originaux conservés. Affiche française du catalogue TMDB ajoutée en premier : message Premium4, https://t.me/c/3958043288/4.

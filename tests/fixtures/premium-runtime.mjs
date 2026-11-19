@@ -20,6 +20,10 @@ globalThis.fetch = async (input, options = {}) => {
     const { stdout } = await execFile(process.env.REDIS_TEST_CLI, ['-s',process.env.PREMIUM_TEST_REDIS_SOCKET,'-2','--json',...args.map(String)]);
     return Response.json({ result: JSON.parse(stdout) });
   }
+  if(url.hostname==='api.telegram.org'){
+    if(url.pathname.endsWith('/getChatMember')){const body=JSON.parse(options.body);return Response.json({ok:true,result:{status:body.user_id===23456?'creator':'administrator'}});}
+    throw new Error('Unexpected Telegram mutation in payment fixture');
+  }
   if (url.hostname === 'api.stripe.com') {
     if (url.pathname === '/v1/account') return Response.json({object:'account',charges_enabled:true,payouts_enabled:true});
     if (url.pathname === '/v1/balance') return Response.json({ object:'balance',livemode:live });
