@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {livePaymentRuntime,premiumSalesEnabled,liveProviderReady,liveCheckoutParameters,verifiedLiveStripeSession,purchaseConflict,stripeLiveClient,stripeLiveAccountReady} from '../src/lib/premium-sales.ts';
+import {livePaymentRuntime,premiumSalesEnabled,liveProviderReady,liveProviderEnabled,liveCheckoutParameters,verifiedLiveStripeSession,purchaseConflict,stripeLiveClient,stripeLiveAccountReady} from '../src/lib/premium-sales.ts';
 import {saspayLiveClient,sasPayOrderDescription,verifiedSasPayResult} from '../src/lib/saspay.ts';
-const env={VERCEL:'1',VERCEL_ENV:'production',PREMIUM_ENVIRONMENT:'live',PREMIUM_SALES_ENABLED:'1',COMMERCE_REVIEWED:'1',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SELLER_NAME:'Fixture',SELLER_LEGAL_STATUS:'EI',SELLER_ADDRESS:'Adresse de test',SELLER_COUNTRY:'FR',SELLER_REGISTRATION:'fixture-registration',COMMERCIAL_TERMS_VERSION:'fixture-v1',SUPPORT_EMAIL:'support@example.com',STRIPE_SECRET_KEY:'sk_live_fixture',STRIPE_WEBHOOK_SECRET_LIVE:'whsec_fixture'};
+const env={VERCEL:'1',VERCEL_ENV:'production',PREMIUM_ENVIRONMENT:'live',PREMIUM_SALES_ENABLED:'1',COMMERCE_REVIEWED:'1',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SELLER_NAME:'Fixture',SELLER_LEGAL_STATUS:'EI',SELLER_ADDRESS:'Adresse de test',SELLER_COUNTRY:'FR',SELLER_REGISTRATION:'fixture-registration',COMMERCIAL_TERMS_VERSION:'fixture-v1',SUPPORT_EMAIL:'support@example.com',STRIPE_SECRET_KEY:'sk_live_fixture',STRIPE_WEBHOOK_SECRET_LIVE:'whsec_fixture',STRIPE_LIVE_ENABLED:'1'};
 const id=randomUUID();
 function order(){return {id,provider:'stripe',environment:'live',telegramUserId:'12345',amountMinor:457,currency:'EUR',status:'pending',providerSessionId:'cs_live_fixture'}}
 function session(){return {id:'cs_live_fixture',client_reference_id:id,mode:'payment',livemode:true,status:'complete',payment_status:'paid',currency:'eur',amount_total:457,payment_intent:'pi_fixture'}}
@@ -66,4 +66,13 @@ test('un compte Stripe restreint ne passe pas la vérification de mise en vente'
  const client=(livemode,charges,payouts)=>({balance:{retrieve:async()=>({livemode})},accounts:{retrieve:async()=>({charges_enabled:charges,payouts_enabled:payouts})}});
  assert.equal(await stripeLiveAccountReady(client(true,true,true)),true);
  for(const args of [[false,true,true],[true,false,true],[true,true,false]])assert.equal(await stripeLiveAccountReady(client(...args)),false);
+});
+
+test('un prestataire configuré mais non activé reste inaccessible même si l’autre est ouvert',()=>{
+ const both={...env,SASPAY_API_KEY:'sk_live_fixture',SASPAY_WEBHOOK_SECRET:'raw_fixture',SASPAY_LIVE_FEE_MODE:'DEDUCTED',SASPAY_LIVE_ENABLED:'1',STRIPE_LIVE_ENABLED:'0'};
+ assert.equal(premiumSalesEnabled(both),true);
+ assert.equal(liveProviderReady('stripe',both),true);
+ assert.equal(liveProviderEnabled('stripe',both),false);
+ assert.equal(liveProviderEnabled('saspay',both),true);
+ assert.equal(premiumSalesEnabled({...both,SASPAY_LIVE_ENABLED:'0'}),false);
 });

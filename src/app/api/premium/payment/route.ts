@@ -1,4 +1,4 @@
-import { premiumSalesEnabled, liveProviderReady, stripeLiveClient, stripeLiveAccountReady, liveCheckoutParameters, withLivePurchase, purchaseConflict, refreshLivePayment } from "@/lib/premium-sales";
+import { premiumSalesEnabled, liveProviderEnabled, stripeLiveClient, stripeLiveAccountReady, liveCheckoutParameters, withLivePurchase, purchaseConflict, refreshLivePayment } from "@/lib/premium-sales";
 import { premiumIdentity } from "@/lib/premium-session";
 import { isPremiumSameOrigin, premiumSiteOrigin } from "@/lib/premium-auth";
 import { premiumRedis, premiumRedisCommand, validPremiumOrderId } from "@/lib/premium-redis";
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const input = JSON.parse(raw);
     const provider = input.provider;
     if (!["stripe", "saspay"].includes(provider) || (input.termsVersion !== process.env.COMMERCIAL_TERMS_VERSION || input.acceptedTerms !== "on")) return Response.json({ error: "Veuillez accepter les conditions en vigueur." }, { status: 400 });
-    if (!liveProviderReady(provider)) return Response.json({ error: "Ce moyen de paiement est momentanément indisponible." }, { status: 503 });
+    if (!liveProviderEnabled(provider)) return Response.json({ error: "Ce moyen de paiement est momentanément indisponible." }, { status: 503 });
     const last = await premiumRedisCommand(["GET", "the-browser:{premium:live}:expiration-sweep:last-success"]);
     if (typeof last !== "string" || !Number.isFinite(Date.parse(last)) || Date.now() - Date.parse(last) > 15 * 60_000 || Date.parse(last) > Date.now() + 60_000) throw new Error("Maintenance non disponible");
     const customer = provider === "saspay" ? sasPayCustomer(input) : null;

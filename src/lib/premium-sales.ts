@@ -14,19 +14,27 @@ export function premiumSalesEnabled(env = process.env) {
     env.PREMIUM_TELEGRAM_AUTH_ENABLED === "1" && env.PREMIUM_TELEGRAM_ACCESS_ENABLED === "1" &&
     ["SELLER_NAME", "COMMERCIAL_TERMS_VERSION"].every(k => !!env[k]?.trim()) &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(env.SUPPORT_EMAIL ?? "") &&
-    (liveProviderReady("stripe", env) || liveProviderReady("saspay", env));
+    (liveProviderEnabled("stripe", env) || liveProviderEnabled("saspay", env));
 }
 export function liveProviderReady(provider: "stripe" | "saspay", env = process.env) {
   if (provider === "stripe") return /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY ?? "") && /^whsec_/.test(env.STRIPE_WEBHOOK_SECRET_LIVE ?? "");
   return /^sk_live_/.test(env.SASPAY_API_KEY ?? "") && sasPayWebhookSecretConfigured(env.SASPAY_WEBHOOK_SECRET) && env.SASPAY_LIVE_FEE_MODE === "DEDUCTED";
 }
+/** Enable each method independently only after its private live checks succeed. */
+export function liveProviderEnabled(provider: "stripe" | "saspay", env = process.env) {
+  return env[provider === "stripe" ? "STRIPE_LIVE_ENABLED" : "SASPAY_LIVE_ENABLED"] === "1" && liveProviderReady(provider, env);
+}
 export function stripeLiveClient(key = process.env.STRIPE_SECRET_KEY ?? "") {
   if (!/^(sk|rk)_live_/.test(key)) throw new Error("Clé Stripe live réelle requise");
   return new Stripe(key, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 });
 }
-export async function stripeLiveAccountReady(client = stripeLiveClient()) {
+export async function stripeLiveAccountState(client = stripeLiveClient()) {
   const [balance, account] = await Promise.all([client.balance.retrieve(), client.accounts.retrieve(null)]);
-  return balance.livemode && account.charges_enabled === true && account.payouts_enabled === true;
+  return { liveMode: balance.livemode === true, chargesEnabled: account.charges_enabled === true, payoutsEnabled: account.payouts_enabled === true };
+}
+export async function stripeLiveAccountReady(client = stripeLiveClient()) {
+  const state = await stripeLiveAccountState(client);
+  return state.liveMode && state.chargesEnabled && state.payoutsEnabled;
 }
 export function liveCheckoutParameters(orderId: string, origin: string): Stripe.Checkout.SessionCreateParams {
   const url = new URL(origin);

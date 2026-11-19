@@ -6,7 +6,7 @@ Le propriétaire demande explicitement l’ouverture le 19 novembre 2026, malgr�
 
 - Les pilotes `/api/stripe/test/*` et `/api/saspay/test/*` restent réservés au serveur local/Preview avec environnement test. Jamais de bascule d’un paiement test vers un droit live.
 - Les nouvelles routes live ne fonctionnent que sur Vercel Production, `PREMIUM_ENVIRONMENT=live`.
-- L’achat exige `PREMIUM_SALES_ENABLED=1`, authentification et accès Telegram activés, `SELLER_NAME`, `SUPPORT_EMAIL`, `COMMERCIAL_TERMS_VERSION`, et au moins un prestataire live configuré.
+- L’achat exige `PREMIUM_SALES_ENABLED=1`, authentification et accès Telegram activés, `SELLER_NAME`, `SUPPORT_EMAIL`, `COMMERCIAL_TERMS_VERSION`, et au moins un prestataire live configuré et explicitement activé (`STRIPE_LIVE_ENABLED=1` ou `SASPAY_LIVE_ENABLED=1`).
 - Le dernier contrôle complet d’expiration doit dater de moins de quinze minutes. Une panne de maintenance bloque une nouvelle commande, mais n’empêche pas la confirmation d’un paiement déjà engagé.
 - Garder `PREMIUM_SALES_ENABLED=0` tant que les secrets live réels ne sont pas configurés et la vérification protégée n’est pas réussie. Une présence de variable ne prouve pas que la clé est valide.
 
@@ -35,3 +35,6 @@ Les demandes de remboursement passent par le support ; aucune promesse de garant
 `scripts/configure-premium-scheduler.mjs` configure de façon idempotente une seule tâche cron-job.org vers l’endpoint `POST /api/premium/access/expire/run`, cinq minutes, timeout300s, notifications d’échec/rétablissement/désactivation à l’adresse de compte. Clé API dans `CRONJOB_API_KEY` ; le nom historique `CRONJOB_API__KEY` est également accepté. Secret de maintenance via fichier sécurisé indiqué par `PREMIUM_ACCESS_CRON_SECRET_FILE`, hors dépôt. Ne pas partager ce fichier ou l’en-tête dans les logs. GitHub reste en secours.
 
 Validation avant ouverture : vérifier les comptes avec readiness, activer explicitement le drapeau puis redéployer, contrôler l’interface réelle et effectuer un premier règlement choisi par le propriétaire. Le test HTTP local des routes live emploie exclusivement une base Redis et des prestataires simulés ; il ne prouve pas qu’un encaissement Live a eu lieu. Aucun paiement réel automatique ne doit être déclenché par une procédure de validation.
+
+
+Chaque prestataire est activé séparément après le contrôle privé. Un compte Stripe non vérifié reste à STRIPE_LIVE_ENABLED=0 même si SasPay est ouvert, afin de ne pas afficher un moyen indisponible. La route d’achat vérifie aussi ce drapeau côté serveur. Le webhook d’un paiement déjà engagé reste traitable pendant une suspension du prestataire.
