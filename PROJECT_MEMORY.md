@@ -10,6 +10,12 @@ Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriét
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Source code de paiement vérifiée : 152 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
+## Correction de redirection SasPay Live — 19 novembre 2026
+
+Erreur utilisateur « Paiement indisponible » reproduite côté données : session SasPay existante PENDING, montant3000.00 XAF et métadonnées correctes, mais sans liaison Redis. Diagnostic privé : REDIRECT_UNSUPPORTED, car la vraie API Live renvoie checkout.saspay.me alors que la liste autorisait uniquement pay.saspay.me. Validation centralisée des URL Live pour ces deux hôtes exacts HTTPS, sans identifiants/port, et Sandbox toujours limité à sandbox-checkout.saspay.me. Aucun relâchement aux sous-domaines arbitraires.
+
+Lecture diagnostique et rapprochement de session existante protégés par l’authentification de maintenance, sans secret/client/URL complète exposés. Le rapprochement ne fournit aucun client et ne peut donc pas créer de checkout ni déclencher de débit. Tests : 153 tests, intégration HTTP/Redis avec domaine réel et rapprochement autorisé/refus anonyme réussis, lint ciblé et TypeScript réussis. Déploiement et récupération de la tentative existante en cours ; aucun débit ni nouvelle session de paiement demandé.
+
 ## SasPay multipays — 19 novembre 2026
 
 Demande explicite du propriétaire d’élargir le paiement. Checkout hébergé implémenté : nom/e-mail, prix serveur3000.00 XAF, sans imposer CG/réseau/+242 ; choix des options et devise chez SasPay. La documentation officielle confirme `country` facultatif (présélection) et gère les OTP ; elle ne garantit pas explicitement la détection automatique du pays par localisation. Ne pas promettre tous les pays ni inventer de taux. Stripe4,57EUR conservé.

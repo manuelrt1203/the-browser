@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {saspayTestClient,sasPayCheckoutCustomer,sasPayOrderDescription,verifiedSasPayCheckout,verifiedSasPayCheckoutResult} from '../src/lib/saspay.ts';
+import {sasPayCheckoutUrl} from '../src/lib/saspay-checkout-url.ts';
+
+test('URL checkout : hôte réellement renvoyé en Live et isolation stricte du Sandbox',()=>{
+ for(const host of ['checkout.saspay.me','pay.saspay.me']){
+  const url=`https://${host}/checkout/session`;
+  assert.equal(sasPayCheckoutUrl(url,'live'),url);
+  assert.throws(()=>sasPayCheckoutUrl(url,'test'));
+ }
+ assert.equal(sasPayCheckoutUrl('https://sandbox-checkout.saspay.me/checkout/session','test'),'https://sandbox-checkout.saspay.me/checkout/session');
+ for(const url of ['https://sandbox-checkout.saspay.me/session','https://checkout.saspay.me.attacker.example/session','https://attacker.example/session','http://checkout.saspay.me/session','https://user:pass@checkout.saspay.me/session','https://checkout.saspay.me:8443/session'])assert.throws(()=>sasPayCheckoutUrl(url,'live'));
+ const {order,session}=fixture();
+ assert.equal(verifiedSasPayCheckout(order,{...session,checkout_url:'https://checkout.saspay.me/checkout/existing'}).checkoutUrl,'https://checkout.saspay.me/checkout/existing');
+});
 
 function fixture(){
  const id=randomUUID(),sessionId=randomUUID(),paymentId=randomUUID();

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { StoredPremiumOrder } from "./premium-redis.ts";
+import { sasPayCheckoutUrl } from "./saspay-checkout-url.ts";
 import { paymentTestRuntime } from "./payment-test-runtime.ts";
 
 export const sasPayOrderDescription = (orderId: string, environment: "test" | "live" = "test") =>
@@ -77,11 +78,8 @@ function sasPayClient(environment: "test" | "live", key: string) {
     if (!data || !sasPayId(data.id)) throw new SasPayError("PAYMENT_RESPONSE");
     let checkoutUrl: string | null = null;
     if (data.checkout_url) {
-      const url = new URL(data.checkout_url);
-      if (url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) {
-        throw new SasPayError("REDIRECT_UNSUPPORTED");
-      }
-      checkoutUrl = url.toString();
+      try { checkoutUrl = sasPayCheckoutUrl(data.checkout_url, environment); }
+      catch { throw new SasPayError("REDIRECT_UNSUPPORTED"); }
     }
     return { id: data.id, checkoutUrl };
   }
@@ -174,9 +172,8 @@ export function verifiedSasPayCheckout(order: StoredPremiumOrder, session: SasPa
       session.currency !== "XAF" || typeof session.amount !== "string" || !/^3000(?:\.0{1,2})?$/.test(session.amount) ||
       session.metadata?.order_id !== order.id || session.metadata?.environment !== order.environment ||
       session.description !== sasPayOrderDescription(order.id, order.environment)) throw new SasPayError("CHECKOUT_MISMATCH");
-  const url = new URL(session.checkout_url);
-  if (url.protocol !== "https:" || url.hostname !== (order.environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) throw new SasPayError("REDIRECT_UNSUPPORTED");
-  return { id: session.id, checkoutUrl: url.toString() };
+  try { return { id: session.id, checkoutUrl: sasPayCheckoutUrl(session.checkout_url, order.environment) }; }
+  catch { throw new SasPayError("REDIRECT_UNSUPPORTED"); }
 }
 
 /** The merchant session proves the ORIGINAL price; the linked transaction may

@@ -44,7 +44,7 @@ globalThis.fetch = async (input, options = {}) => {
     if(url.pathname==='/api/v1/checkout-sessions/' && options.method==='POST'){
       const body=JSON.parse(options.body),id=randomUUID(),paymentId=randomUUID();
       if(body.country || body.network || body.customer_phone || body.amount!=='3000.00' || body.currency!=='XAF')throw new Error('Hosted contract');
-      const session={...body,id,status:'PENDING',transaction:null,checkout_url:`https://${live?'pay':'sandbox-checkout'}.saspay.me/checkout/${id}`};
+      const session={...body,id,status:'PENDING',transaction:null,checkout_url:`https://${live?'checkout':'sandbox-checkout'}.saspay.me/checkout/${id}`};
       checkouts.set(id,{session,paymentId});
       // The checkout may settle in another currency. Source amount stays on the session.
       payments.set(paymentId,{id:paymentId,status:'PENDING',currency:'EUR',requested_amount:'4.57',description:'',transaction_type:'PAIEMENT',flow_direction:'INBOUND',updated_at:new Date().toISOString()});

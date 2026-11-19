@@ -1,3 +1,4 @@
+import { sasPayCheckoutUrl } from "./saspay-checkout-url.ts";
 import { createPremiumOrder, confirmPremiumPayment, hasPremiumAccess } from "./subscription.ts";
 import type { PaymentProvider, PremiumOrder } from "./subscription.ts";
 
@@ -106,8 +107,8 @@ export function premiumRedis(environment: "test" | "live") {
       if (value.providerSessionId !== undefined) providerIdentifier(value.providerSessionId);
       if (value.providerFlow !== undefined && (value.providerFlow !== "checkout" || value.provider !== "saspay" || !value.providerSessionId)) throw new Error();
       if (value.providerCheckoutUrl !== undefined) {
-        const url = new URL(value.providerCheckoutUrl);
-        if (value.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) throw new Error();
+        if (value.provider !== "saspay") throw new Error();
+        sasPayCheckoutUrl(value.providerCheckoutUrl, environment);
       }
       if (value.status === "confirmed" && (!value.providerSessionId || !value.confirmedPaymentId || !value.startsAt || !value.expiresAt ||
           !Number.isFinite(Date.parse(value.startsAt)) || !Number.isFinite(Date.parse(value.expiresAt)) ||
@@ -151,8 +152,8 @@ export function premiumRedis(environment: "test" | "live") {
       if (providerFlow !== undefined && (providerFlow !== "checkout" || current.order.provider !== "saspay")) throw new PremiumStorageError("SESSION_CONFLICT");
       if (current.order.providerSessionId && current.order.providerFlow !== providerFlow) throw new PremiumStorageError("SESSION_CONFLICT");
       if (checkoutUrl !== undefined) {
-        const url = new URL(checkoutUrl);
-        if (current.order.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) throw new PremiumStorageError("REDIRECT");
+        try { if (current.order.provider !== "saspay") throw new Error(); sasPayCheckoutUrl(checkoutUrl, environment); }
+        catch { throw new PremiumStorageError("REDIRECT"); }
         if (current.order.providerCheckoutUrl && current.order.providerCheckoutUrl !== checkoutUrl) throw new PremiumStorageError("SESSION_CONFLICT");
       }
       const updated = { ...current.order, providerSessionId: sessionId,

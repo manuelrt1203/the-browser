@@ -59,3 +59,10 @@ L’endpoint de création SasPay ne prend PAS en charge Idempotency-Key. Un marq
 Vérifié : création d’une vraie session Sandbox sans pays imposé, référence3000.00 XAF conservée, URL sandbox-checkout.saspay.me, statut PENDING et annulation HTTP200 ; aucun numéro ni débit. Conversion et confirmation multipays couvertes par tests isolés (prestataire simulé), pas encore par un paiement humain réel dans une autre devise. Le pilote Sandbox historique MTN/Airtel reste disponible uniquement en Preview/test et conserve son flux direct.
 
 Livraison : commits19dca5c et519ac0c sur main ; déploiement Production dpl_FHfJzYzaBTex6X1PMDpsPgms7tV1 Ready. Formulaire public multipays vérifié dans Chromium à390/320px ; contrôle privé des deux prestataires/webhooks et maintenance réussi. 152 tests, intégrations HTTP/Redis isolées et compilation réussis. Aucun paiement Live de validation automatique.
+
+
+## Incident de redirection Live — 19 novembre 2026
+
+Une tentative réelle a créé une session mais a été rejetée localement : l’API Live renvoie `https://checkout.saspay.me/...`, contrairement au seul hôte `pay.saspay.me` de l’exemple OpenAPI. Les deux hôtes exacts sont désormais admis en Live via une validation commune au client et au stockage. Sandbox reste limité à son propre hôte. Tests de régression contre hôtes trompeurs, HTTP, identifiants, ports et mélange des environnements.
+
+Maintenance protégée : GET `/api/premium/payment/readiness?order=UUID` relit uniquement la session marchande et retourne des valeurs non sensibles (présence, liaison, prix, devise, hôte, résultat de validation) ; POST sur la même URL rapproche uniquement une session existante puis vérifie son statut. Aucune création ni donnée client fournie à la récupération. Sans authentification de maintenance :401. Aucun lien complet/secret prestataire exposé. Le client reprend ensuite sa commande via sa session Telegram habituelle.
