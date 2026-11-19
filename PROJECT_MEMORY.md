@@ -10,6 +10,12 @@ Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriét
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Code applicatif vérifié : 155 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
+## Sources externes et coût des API — 19 novembre 2026
+
+Le propriétaire demande une recherche de films et liens sur le Web, puis précise qu’il ne veut pas payer l’API Brave. Respecter cette préférence : aucun moteur payant à activer ou compte payant à créer sans nouvelle instruction explicite. La préparation locale Brave a été retirée avant commit/déploiement ; aucune clé ni variable d’activation Brave configurée par l’agent, aucun appel Brave réel ni facturation déclenchés. TMDB existant et commandes de copie restent en service.
+
+Question du propriétaire : envoyer le lien d’un canal public au bot pour qu’il le rejoigne et en lise les publications. Réponse : la Bot API actuelle ne peut pas rejoindre un canal sur simple lien ni parcourir son historique ; elle doit y être ajoutée avec les accès nécessaires. Un service distinct utilisant un compte Telegram classique authentifié via l’API client MTProto pourrait accéder aux canaux publics accessibles à ce compte, sans Brave. C’est une possibilité expliquée, pas une intégration autorisée/configurée ni un accès déjà testé. Aucun compte personnel connecté. La réception/copie des publications transférées en privé reste également à développer.
+
 ## Commandes de copie dans Telegram — 19 novembre 2026
 
 Demandées : /copier film/série vers Premium, affiche incluse ; utilisateur ajoute explicitement le propriétaire du canal. Implémentation : /copier TITRE et /copie en privé, uniquement aux propriétaires Telegram actuels (creator du canal Premium ou source) et aux IDs opérateur explicitement configurés. Source et Premium ont le même propriétaire, vérifié par getChatAdministrators ; aucun administrateur ordinaire autorisé par défaut. Reconnaissance exacte type/alias/année, ambiguïtés proposées au lieu d’un choix arbitraire.
