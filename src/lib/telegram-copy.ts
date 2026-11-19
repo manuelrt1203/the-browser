@@ -24,7 +24,7 @@ async function telegram(method: string, body: Record<string, unknown>) {
       body: JSON.stringify(body), redirect: "error", signal: AbortSignal.timeout(50_000) });
     data = await response.json();
   } catch { throw new Error("TELEGRAM_UNCERTAIN"); }
-  if (!data.ok) {
+  if (!response.ok || !data.ok) {
     if (response.status === 429 && Number.isInteger(data.parameters?.retry_after) && data.parameters.retry_after > 0) throw new TelegramCopyRateLimit(data.parameters.retry_after);
     throw new Error("TELEGRAM_REJECTED");
   }
@@ -66,7 +66,7 @@ export function telegramCopyService(overrides: Partial<Dependencies> = {}, env =
       const job: Job = JSON.parse(String(raw));
       return { reply: reply(user, `${progress(job)}\n${({ queued: "En attente de reprise automatique.", running: "Copie en cours.", done: "Copie terminée.", blocked: "Un envoi doit être vérifié dans le Premium avant toute reprise. Ne relancez pas une copie pour éviter un doublon." })[job.status]}`), wake: false };
     }
-    if (!parsed.query) return { reply: reply(user, "Envoyez /copier suivi du titre. Exemples : /copier série Tout le monde déteste Chris ou /copier film Avatar 2009. /copie affiche l’avancement."), wake: false };
+    if (!parsed.query) return { reply: reply(user, "Envoyez /copier suivi du titre. Exemples : /copier série Tout le monde déteste Chris ou /copier film John Wick : Chapitre 4. /copie affiche l’avancement."), wake: false };
     const plans = findCopyPlans(parsed.query, Object.values((await d.catalogue()).posts));
     if (!plans.length) return { reply: reply(user, "Aucune vidéo identifiée pour ce titre dans le canal public. Précisez le titre exact, le type ou l’année."), wake: false };
     if (plans.length > 1) return { reply: reply(user, "Plusieurs titres correspondent. Précisez votre choix :\n" + plans.slice(0, 8).map(p => `${p.title}${p.year ? ` (${p.year})` : ""} → /copier ${p.kind}-${p.id}`).join("\n")), wake: false };

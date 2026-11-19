@@ -66,5 +66,13 @@ test('commandes et worker : Redis réel isolé, autorisations, reprises et absen
    await reset();await service.command(update(1));owners.delete(1);await service.worker();
    assert.equal(sent.filter(s=>s.method==='copyMessage'||s.method==='sendPhoto').length,0);
   });
+  await t.test('film : affiche movie et fichier du film, sans confusion avec une série',async()=>{
+   await reset();
+   const movie={...entry(30,1),titles:[{kind:'film',id:603692,expectedTitle:'John Wick : Chapitre 4',year:2023}]};
+   const films=telegramCopyService({redis,bot,catalogue:async()=>({posts:{movie}}),poster:async plan=>{assert.equal(plan.kind,'film');return 'https://image.tmdb.org/t/p/w780/movie.jpg';},now:()=>clock,pause:async ms=>{clock+=ms;}},env);
+   await films.command(update(1,'/copier film John Wick : Chapitre 4'));await films.worker();
+   assert.deepEqual(sent.filter(s=>s.method==='copyMessage').map(s=>s.body.message_id),[30]);
+   assert.equal(JSON.parse(await redis(['GET',`the-browser:telegram-copy:${env.TELEGRAM_CHANNEL_ID}:${env.TELEGRAM_PREMIUM_CHANNEL_ID}:poster:movie:603692`])).status,'copied');
+  });
  }finally{if(server.exitCode===null){server.kill('SIGTERM');await once(server,'exit');}await rm(dir,{recursive:true,force:true});}
 });
