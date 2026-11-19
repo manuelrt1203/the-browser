@@ -1,7 +1,7 @@
 import { premiumIdentity } from "@/lib/premium-session";
 import { isPremiumSameOrigin } from "@/lib/premium-auth";
 import { premiumRedis, validPremiumOrderId } from "@/lib/premium-redis";
-import { saspayTestClient, saspayTestEnabled, sasPayCustomer, SasPayError } from "@/lib/saspay";
+import { saspayTestClient, saspayTestEnabled, sasPayCustomer, SasPayError, sasPayWebhookSecretConfigured } from "@/lib/saspay";
 import { refreshSasPayTestOrder } from "@/lib/saspay-orders";
 
 export async function POST(request: Request) {
@@ -12,7 +12,9 @@ export async function POST(request: Request) {
     if (!identity) return Response.json({ error: "Connexion Telegram requise" }, { status: 401 });
     const id = request.headers.get("idempotency-key") ?? "";
     if (!validPremiumOrderId(id)) return Response.json({ error: "Tentative invalide" }, { status: 400 });
-    if (!process.env.SASPAY_WEBHOOK_SECRET_TEST) return Response.json({ error: "Configurer la confirmation SasPay avant le paiement." }, { status: 503 });
+    if (!sasPayWebhookSecretConfigured(process.env.SASPAY_WEBHOOK_SECRET_TEST)) {
+      return Response.json({ error: "Configurer la valeur réelle du secret webhook SasPay dans Vercel Preview avant le paiement." }, { status: 503 });
+    }
     let input;
     try { const text = await request.text(); if (Buffer.byteLength(text) > 4096) throw new Error(); input = sasPayCustomer(JSON.parse(text)); }
     catch { return Response.json({ error: "Vérifiez votre nom, email, réseau et numéro +242." }, { status: 400 }); }
