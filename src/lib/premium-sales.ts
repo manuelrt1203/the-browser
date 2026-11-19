@@ -25,7 +25,7 @@ export function stripeLiveClient(key = process.env.STRIPE_SECRET_KEY ?? "") {
   return new Stripe(key, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 });
 }
 export async function stripeLiveAccountReady(client = stripeLiveClient()) {
-  const [balance, account] = await Promise.all([client.balance.retrieve(), client.accounts.retrieve()]);
+  const [balance, account] = await Promise.all([client.balance.retrieve(), client.accounts.retrieve(null)]);
   return balance.livemode && account.charges_enabled === true && account.payouts_enabled === true;
 }
 export function liveCheckoutParameters(orderId: string, origin: string): Stripe.Checkout.SessionCreateParams {
