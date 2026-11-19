@@ -1,7 +1,8 @@
+import { commercialInformation } from "@/lib/commercial-information";
 import { CommercialPage } from "@/components/CommercialPage";
 export const metadata = { title: "Support — The Browser" };
 export default function SupportPage() {
-  const value = process.env.SUPPORT_EMAIL?.trim() ?? "";
+  const value = commercialInformation().supportEmail;
   const email = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value) ? value : null;
   return <CommercialPage title="Support">
     <section><h2 className="text-xl font-semibold text-white">Nous contacter</h2>

@@ -1,10 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { PREMIUM_OFFERS } from "./subscription.ts";
 import type { StoredPremiumOrder } from "./premium-redis.ts";
 import { paymentTestRuntime } from "./payment-test-runtime.ts";
 
-const API = "https://sandbox-api.saspay.me/api/v1";
-export const sasPayOrderDescription = (orderId: string) => `The Browser Premium test — commande ${orderId}`;
+export const sasPayOrderDescription = (orderId: string, environment: "test" | "live" = "test") =>
+  `The Browser Premium${environment === "test" ? " test" : ""} — commande ${orderId}`;
 export class SasPayError extends Error {
   readonly code: string;
   constructor(code: string) { super(`SasPay : ${code}`); this.code = code; }
@@ -17,10 +16,18 @@ export function sasPayId(value: unknown): value is string {
 }
 
 export function saspayTestClient(key = process.env.SASPAY_API_KEY_TEST ?? "") {
-  // The sandbox hostname, not the key prefix, prevents real payments.
-  // Keep the base fixed and reject redirects, including redirects to production.
-  // Reject live labels and proxy placeholders as an additional configuration check.
-  if (!key.startsWith("sk_test_") || key.length < 16) throw new SasPayError("TEST_KEY_REQUIRED");
+  return sasPayClient("test", key);
+}
+export function saspayLiveClient(key = process.env.SASPAY_API_KEY ?? "") {
+  if (process.env.SASPAY_LIVE_FEE_MODE !== "DEDUCTED") throw new SasPayError("FEE_POLICY_REQUIRED");
+  return sasPayClient("live", key);
+}
+function sasPayClient(environment: "test" | "live", key: string) {
+  const API = environment === "test" ? "https://sandbox-api.saspay.me/api/v1" : "https://api.saspay.me/api/v1";
+  // The two exported clients select fixed, separate API origins. No redirects
+  // or runtime base override may turn a test request into a real payment.
+  // Reject keys of the other mode and proxy placeholders as an extra check.
+  if (!key.startsWith(environment === "test" ? "sk_test_" : "sk_live_") || key.length < 16) throw new SasPayError("KEY_MODE_REQUIRED");
   async function request(path: string, body?: unknown, idempotencyKey?: string): Promise<unknown> {
     let response;
     try {
@@ -61,16 +68,17 @@ export function saspayTestClient(key = process.env.SASPAY_API_KEY_TEST ?? "") {
     const available = await networks();
     if (!available.some(n => n.code === customer.network)) throw new SasPayError("NETWORK_UNAVAILABLE");
     const data = await request("/payments/softpay/", {
-      amount: String(PREMIUM_OFFERS.saspay.amountMinor), currency: "XAF", country: "CG", network: customer.network,
-      description: sasPayOrderDescription(orderId),
+      amount: "3000.00", currency: "XAF", country: "CG", network: customer.network,
+      description: sasPayOrderDescription(orderId, environment),
+      ...(environment === "live" ? { fee_charge_mode: "DEDUCTED" } : {}),
       customer: { email: customer.email, first_name: customer.firstName, last_name: customer.lastName, phone: customer.phone },
       metadata: { order_id: orderId },
-    }, `the-browser-saspay-test-${orderId}`) as { id?: string; status?: string; checkout_url?: string; instructions?: string };
+    }, `the-browser-saspay-${environment}-${orderId}`) as { id?: string; status?: string; checkout_url?: string; instructions?: string };
     if (!data || !sasPayId(data.id)) throw new SasPayError("PAYMENT_RESPONSE");
     let checkoutUrl: string | null = null;
     if (data.checkout_url) {
       const url = new URL(data.checkout_url);
-      if (url.protocol !== "https:" || url.hostname !== "sandbox-checkout.saspay.me" || url.username || url.password || url.port) {
+      if (url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) {
         throw new SasPayError("REDIRECT_UNSUPPORTED");
       }
       checkoutUrl = url.toString();
@@ -81,7 +89,8 @@ export function saspayTestClient(key = process.env.SASPAY_API_KEY_TEST ?? "") {
     if (!sasPayId(paymentId)) throw new SasPayError("PAYMENT_ID");
     return await request(`/payments/${paymentId}/verify/`) as SasPayPayment;
   }
-  return { networks, initiate, verify };
+  async function merchantCheck() { await request("/pricing/my-rates/"); return true; }
+  return { networks, initiate, verify, merchantCheck };
 }
 
 export function sasPayCustomer(input: unknown) {
@@ -118,7 +127,7 @@ export function verifiedSasPayResult(order: StoredPremiumOrder, payment: SasPayP
       order.amountMinor !== 3000 || order.currency !== "XAF" || payment.currency !== "XAF" ||
       typeof payment.requested_amount !== "string" || !/^3000(?:\.0{1,2})?$/.test(payment.requested_amount) ||
       payment.transaction_type !== "PAIEMENT" || payment.flow_direction !== "INBOUND" ||
-      payment.description !== sasPayOrderDescription(order.id)) throw new SasPayError("PAYMENT_MISMATCH");
+      !["test", "live"].includes(order.environment) || payment.description !== sasPayOrderDescription(order.id, order.environment)) throw new SasPayError("PAYMENT_MISMATCH");
   if (payment.status === "SUCCESS") {
     if (!Number.isFinite(Date.parse(payment.updated_at))) throw new SasPayError("PAYMENT_DATE");
     return { status: "confirmed" as const, payment: { orderId: order.id, provider: "saspay" as const, sessionId: payment.id,

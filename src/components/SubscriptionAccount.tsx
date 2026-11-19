@@ -53,7 +53,7 @@ export function SubscriptionAccount() {
         {account.orders.length > 0 && <div className="mt-7"><h3 className="font-semibold">Historique</h3><ul className="mt-3 space-y-3">{account.orders.map(order => <li key={order.id} className="rounded-lg border border-white/10 p-4">
           <p>{labels[order.status]} · {amount(order.amountMinor, order.currency)} · {order.provider === "stripe" ? "Stripe" : "SasPay"}</p>
           {order.startsAt && <p className="mt-1 text-sm text-white/60">Du {date(order.startsAt)}{order.expiresAt && <> au {date(order.expiresAt)}</>}</p>}
-          <p className="mt-2 break-all text-xs text-white/50">Référence de commande : {order.id}</p>
+          <p className="mt-2 break-all text-xs text-white/50">Référence de commande : {order.id}</p>{account.environment === "live" && order.status === "pending" && <Link href={`/premium?order=${encodeURIComponent(order.id)}`} className="mt-3 inline-block text-amber-200 underline">Vérifier ou reprendre ce paiement →</Link>}
         </li>)}</ul></div>}
       </>}
     </section>}

@@ -1,0 +1,60 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn,execFile as callback} from 'node:child_process';
+import {once} from 'node:events';
+import {promisify} from 'node:util';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {createServer} from 'node:net';
+import {createHmac,randomUUID} from 'node:crypto';
+const execFile=promisify(callback);
+test('HTTP live isolé : consentement, maintien, propriétaires, modes et confirmation sans réseau externe',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'premium-live-')),socket=join(directory,'redis.sock'),paymentState=join(directory,'payments.json');
+ await writeFile(paymentState,JSON.stringify({saspayPaid:false}));
+ const redis=spawn(process.env.REDIS_TEST_SERVER,['--port','0','--unixsocket',socket,'--save','','--appendonly','no','--dir',directory],{stdio:'ignore'});
+ let app,logs='';
+ const command=async args=>JSON.parse((await execFile(process.env.REDIS_TEST_CLI,['-s',socket,'--json',...args.map(String)])).stdout);
+ try{
+  for(let i=0;i<100;i++){try{if(await command(['PING'])==='PONG')break;}catch{}await new Promise(r=>setTimeout(r,20));}
+  const reserve=createServer();reserve.listen(0,'127.0.0.1');await once(reserve,'listening');const port=reserve.address().port;await new Promise(r=>reserve.close(r));const origin=`http://127.0.0.1:${port}`,site="https://the-browser-fixture.example";
+  app=spawn(process.execPath,['--import',resolve('tests/fixtures/premium-runtime.mjs'),resolve('node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_OPTIONS:'',NODE_USE_ENV_PROXY:'0',NODE_ENV:'development',PREMIUM_TEST_FIXTURES:'1',PREMIUM_TEST_LIVE_FIXTURE:'1',PREMIUM_TEST_REDIS_SOCKET:socket,PREMIUM_TEST_PAYMENT_STATE:paymentState,VERCEL:'1',VERCEL_ENV:'production',PREMIUM_ENVIRONMENT:'live',PREMIUM_SALES_ENABLED:'1',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SITE_URL:site,SELLER_NAME:'Fixture',COMMERCIAL_TERMS_VERSION:'fixture-v1',SUPPORT_EMAIL:'support@example.com',KV_REST_API_URL:'https://premium-redis.invalid',KV_REST_API_TOKEN:'fixture',TELEGRAM_CHANNEL_ID:'-1004339801492',TELEGRAM_WEBHOOK_SECRET:'telegram-fixture',STRIPE_SECRET_KEY:'sk_live_fixture_not_a_real_key',STRIPE_WEBHOOK_SECRET_LIVE:'whsec_live_fixture',SASPAY_API_KEY:'sk_live_fixture_not_a_real_key',SASPAY_WEBHOOK_SECRET:'saspay_live_fixture',SASPAY_LIVE_FEE_MODE:'DEDUCTED'},stdio:['ignore','pipe','pipe']});
+  for(const stream of [app.stdout,app.stderr])stream.on('data',b=>logs=(logs+b.toString()).slice(-8000));
+  let ready=false;for(let i=0;i<120;i++){try{if((await fetch(origin+'/api/premium/auth/session')).status===200){ready=true;break;}}catch{}if(app.exitCode!==null)break;await new Promise(r=>setTimeout(r,100));}assert.ok(ready,logs.slice(-2000));
+  const post=(path,body,headers={})=>fetch(origin+path,{method:'POST',headers:{origin:site,'content-type':'application/json',...headers},body:JSON.stringify(body)});
+  let update=10000;
+  const telegram=body=>post('/api/telegram',{update_id:update++,...body},{'x-telegram-bot-api-secret-token':'telegram-fixture'});
+  async function login(user){const start=await post('/api/premium/auth/start',{});assert.equal(start.status,200);const cookie=start.headers.get('set-cookie').split(';')[0];const payload=new URL((await start.json()).telegramUrl).searchParams.get('start');const msg=await telegram({message:{chat:{id:user,type:'private'},from:{id:user,is_bot:false},text:`/start ${payload}`}});const prompt=await msg.json();const confirm=await telegram({callback_query:{id:`cb${user}`,from:{id:user,is_bot:false},message:{chat:{id:user,type:'private'}},data:prompt.reply_markup.inline_keyboard[0][0].callback_data}});assert.equal(confirm.status,200);return cookie;}
+  const cookie=await login(12345),other=await login(23456),id=randomUUID();
+  const payload={provider:'stripe',termsVersion:'fixture-v1',acceptedTerms:'on'},headers={cookie,'idempotency-key':id};
+  assert.equal((await post('/api/premium/payment',payload,{'idempotency-key':id})).status,401);
+  assert.equal((await post('/api/premium/payment',{...payload,acceptedTerms:''},headers)).status,400);
+  assert.equal((await post('/api/premium/payment',payload,{...headers,origin:'https://attacker.example'})).status,403);
+  assert.equal((await post('/api/premium/payment',payload,headers)).status,503,'maintenance non confirmée : pas de commande');
+  assert.equal(await command(['GET',`the-browser:{premium:live}:order:${id}`]),null);
+  await command(['SET','the-browser:{premium:live}:expiration-sweep:last-success',new Date().toISOString()]);
+  const created=await post('/api/premium/payment',payload,headers);assert.equal(created.status,200,await created.clone().text());assert.equal((await created.json()).status,'confirmed');
+  const saved=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${id}`]));assert.equal(saved.telegramUserId,'12345');assert.equal(saved.amountMinor,457);assert.equal(saved.environment,'live');
+  assert.ok(await command(['GET',`the-browser:{premium:live}:terms:${id}`]));
+  assert.equal((await post('/api/premium/payment',payload,headers)).status,200);
+  assert.equal((await post('/api/premium/payment',payload,{cookie,'idempotency-key':randomUUID()})).status,409,'abonnement actif');
+  assert.equal((await fetch(origin+`/api/premium/payment/status?order=${id}`,{headers:{cookie:other}})).status,404);
+  const timestamp=Math.floor(Date.now()/1000);
+  const event={id:'evt_live_fixture',type:'checkout.session.completed',created:timestamp,livemode:true,data:{object:{id:saved.providerSessionId}}};
+  const stripeEvent=async e=>{const body=JSON.stringify(e),signature=createHmac('sha256','whsec_live_fixture').update(`${timestamp}.${body}`).digest('hex');return fetch(origin+'/api/stripe/webhook',{method:'POST',headers:{'stripe-signature':`t=${timestamp},v1=${signature}`},body});};
+  assert.equal((await stripeEvent({...event,livemode:false})).status,400);
+  assert.equal((await stripeEvent(event)).status,200);
+  assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${id}`])).expiresAt,saved.expiresAt);
+  const sasId=randomUUID(),sasPayload={provider:'saspay',termsVersion:'fixture-v1',acceptedTerms:'on',firstName:'Test',lastName:'Client',email:'client@example.com',phone:'+242061234560',network:'fixture_mtn_cg'};
+  const sasResponse=await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':sasId});assert.equal(sasResponse.status,200,await sasResponse.clone().text());assert.equal((await sasResponse.json()).status,'pending');
+  assert.equal((await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':randomUUID()})).status,409,'autre paiement en attente');
+  const sasOrder=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${sasId}`]));await writeFile(paymentState,JSON.stringify({saspayPaid:true}));
+  const body=JSON.stringify({event:'transaction.success',data:{id:sasOrder.providerSessionId}}),signature=createHmac('sha256','saspay_live_fixture').update(`${timestamp}.${body}`).digest('hex');
+  const sasHeaders={'x-webhook-event':'transaction.success','x-webhook-timestamp':String(timestamp),'x-webhook-signature':signature};
+  assert.equal((await fetch(origin+'/api/saspay/webhook',{method:'POST',headers:{...sasHeaders,'x-webhook-signature':'0'.repeat(64)},body})).status,400);
+  assert.equal((await fetch(origin+'/api/saspay/webhook',{method:'POST',headers:sasHeaders,body})).status,200);
+  const sasPaid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${sasId}`]));assert.equal(sasPaid.status,'confirmed');assert.equal(sasPaid.amountMinor,3000);
+  assert.equal((await fetch(origin+'/api/saspay/webhook',{method:'POST',headers:sasHeaders,body})).status,200);assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${sasId}`])).expiresAt,sasPaid.expiresAt);
+  assert.equal(await command(['SCARD','the-browser:{premium:live}:channel-access:users']),0,'aucune mutation Telegram dans ce test');
+ }finally{for(const child of [app,redis])if(child&&child.exitCode===null){child.kill('SIGTERM');await once(child,'exit');}await rm(directory,{recursive:true,force:true});}
+});

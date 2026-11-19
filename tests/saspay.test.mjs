@@ -60,7 +60,7 @@ test('SasPay : référentiel réel filtré par pays et réseau actif, prix serve
     const client=saspayTestClient('sk_test_fixture_not_a_real_key');
     assert.deepEqual(await client.networks(),[{code:'fixture_mtn_cg',name:'MTN'}]);
     assert.equal((await client.initiate(order,{...customer,amount:1,currency:'EUR'})).id,paymentId);
-    assert.equal(initiation.body.amount,'3000');assert.equal(initiation.body.currency,'XAF');assert.equal(initiation.body.country,'CG');
+    assert.equal(initiation.body.amount,'3000.00');assert.equal(initiation.body.currency,'XAF');assert.equal(initiation.body.country,'CG');
     assert.equal(initiation.headers['Idempotency-Key'],`the-browser-saspay-test-${order}`);
     await assert.rejects(()=>client.initiate(order,{...customer,network:'fixture_mtn_cd'}));
     for (const forbidden of ['https://pay.saspay.me/checkout','https://attacker.example/checkout','http://sandbox-checkout.saspay.me/checkout']) {

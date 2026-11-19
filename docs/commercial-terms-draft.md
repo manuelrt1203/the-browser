@@ -35,3 +35,7 @@ Créer une adresse effectivement consultée, puis renseigner `SUPPORT_EMAIL` dan
 - `GET /api/premium/subscription` : lecture privée sans cache, aucune identité fournie par le navigateur, aucune référence de session/prestataire ni lien d’invitation dans l’historique.
 
 Ce document est une trame à compléter et vérifier selon l’activité et les pays de vente ; ce n’est pas une confirmation de conformité permettant d’ouvrir les paiements.
+
+## Informations communiquées le 19 novembre 2026
+
+Rodrigue Emmanuel, entrepreneur individuel (statut déclaré), en France ; adresse de support manuelrt1203@gmail.com. Adresse de domiciliation et références d’immatriculation non communiquées. Le propriétaire demande explicitement de préparer l’ouverture des paiements sans attendre l’adresse : cette décision remplace la consigne antérieure de maintenir les ventes fermées pour ce seul motif. Les informations manquantes restent clairement signalées ; ne pas présenter la situation comme administrativement vérifiée. Ouverture technique conditionnée aux clés/secrets Live réellement configurés. Voir docs/live-payments.md.
