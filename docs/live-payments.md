@@ -40,3 +40,7 @@ Validation avant ouverture : vérifier les comptes avec readiness, activer expli
 Chaque prestataire est activé séparément après le contrôle privé. Un compte Stripe non vérifié reste à STRIPE_LIVE_ENABLED=0 même si SasPay est ouvert, afin de ne pas afficher un moyen indisponible. La route d’achat vérifie aussi ce drapeau côté serveur. Le webhook d’un paiement déjà engagé reste traitable pendant une suspension du prestataire.
 
 Le contrôle privé vérifie également les destinations enregistrées chez les prestataires : URL exacte, mode Live, activité du webhook et événements requis. Il n’affiche aucune donnée de compte Stripe, seulement mode/encaissements/virements et un statut d’erreur technique sans message susceptible de contenir une clé. Un simple secret enregistré localement ne prouve pas la configuration distante ni une livraison signée réelle ; conserver la validation du premier paiement choisi par le client.
+
+## État vérifié du 19 novembre 2026
+
+SasPay est ouvert en Production : API authentifiée, réseaux CG actifs et webhook Live correctement enregistré. La page publique propose Mobile Money3000FCFA avec authentification et consentement, et le serveur refuse un achat anonyme. Stripe reste désactivé séparément : l’API renvoie401 avec la clé fournie, même après un premier remplacement et redéploiement. Générer/copier une clé secrète complète et recontrôler avant de passer STRIPE_LIVE_ENABLED à1. Aucun encaissement Live de test n’a été déclenché automatiquement ; ne pas confondre ouverture du formulaire et paiement réel de bout en bout déjà validé.
