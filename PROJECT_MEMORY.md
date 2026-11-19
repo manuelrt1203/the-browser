@@ -4,11 +4,11 @@ Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriét
 
 ## État actuel — paiements ouverts le 19 novembre 2026
 
-- Production : carte Stripe **4,57 EUR** et SasPay **3000 XAF** proposés sur /premium, renouvellement manuel, authentification Telegram et consentement aux conditions obligatoires.
-- Contrôle privé final : comptes/API et destinations webhook Live vérifiés, Stripe encaissements/virements autorisés, maintenance cron-job.org fraîche. PREMIUM_SALES_ENABLED, STRIPE_LIVE_ENABLED, SASPAY_LIVE_ENABLED à1 en Production. Dernier déploiement vérifié Ready : dpl_F47t7odmWYPg1jpcwHykeg3oLHqX.
+- Production : carte Stripe **4,57 EUR** et checkout SasPay **multipays, référence3000 XAF** proposés sur /premium, renouvellement manuel, authentification Telegram et consentement aux conditions obligatoires.
+- Contrôle privé final : comptes/API et destinations webhook Live vérifiés, Stripe encaissements/virements autorisés, maintenance cron-job.org fraîche. PREMIUM_SALES_ENABLED, STRIPE_LIVE_ENABLED, SASPAY_LIVE_ENABLED à1 en Production. Dernier déploiement vérifié Ready : dpl_FHfJzYzaBTex6X1PMDpsPgms7tV1 (source519ac0c).
 - Les essais Sandbox/Stripe test sont distincts et fermés sur le domaine Production. SasPay Sandbox paiement→webhook→commande Redis testé, signature rétablie. Aucun paiement/débit Live de test n’a été déclenché par l’agent ; premier règlement humain et attribution Live complète restent à observer.
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
-- Source code de paiement vérifiée : 147 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
+- Source code de paiement vérifiée : 152 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
 ## SasPay multipays — 19 novembre 2026
 
@@ -16,7 +16,7 @@ Demande explicite du propriétaire d’élargir le paiement. Checkout hébergé 
 
 Session marchande d’origine rapprochée avec commande/prix/environnement, statut PAID et même transaction liée, puis verify SUCCESS entrant avant confirmation. Le prix local peut différer par conversion. ID checkout et ID transaction distincts ; anciennes commandes directes compatibles. Création non idempotente chez SasPay : marqueur Redis durable et rapprochement par métadonnées après perte de réponse, aucun retry aveugle. Webhooks/secrets existants conservés. Conditions et confidentialité adaptées. Détails dans docs/live-payments.md.
 
-Validation locale : 152 tests, intégration HTTP Live avec conversion simulée/webhook/doublon/réponse perdue, ancien parcours HTTP test et Redis réel isolé réussis ; lint0erreur (17warnings d’outillage), build réussi. Vraie session Sandbox sans pays créée puis annulée HTTP200, aucun débit. Paiement humain réel dans une autre devise encore non vérifié. Déploiement de cette évolution en cours ; ne pas confondre ces preuves avec un achat Live terminé.
+Validation locale : 152 tests, intégration HTTP Live avec conversion simulée/webhook/doublon/réponse perdue, ancien parcours HTTP test et Redis réel isolé réussis ; lint0erreur (17warnings d’outillage), build réussi. Vraie session Sandbox sans pays créée puis annulée HTTP200, aucun débit. Paiement humain réel dans une autre devise encore non vérifié. Livré sur main : 19dca5c puis519ac0c ; Production dpl_FHfJzYzaBTex6X1PMDpsPgms7tV1 Ready sur le domaine public. Contrôle Chromium du vrai formulaire à390/320px réussi : nom/e-mail, bouton SasPay, prix source et consentement ; aucun champ téléphone/réseau Congo, aucun débordement. Readiness Live200 (Stripe/SasPay/webhooks configurés et vérifiés, maintenance fraîche), achat anonyme401 et webhooks testProduction404. Le webhook utilise la relation marchande transaction→session si la description n’est pas recopiée. Ne pas confondre ces preuves avec un achat Live terminé.
 
 ## Refonte visuelle cinéma — 16 novembre 2026
 
