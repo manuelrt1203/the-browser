@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { premiumRedis, premiumRedisCommand } from "./premium-redis.ts";
 import type { StoredPremiumOrder } from "./premium-redis.ts";
 import { PREMIUM_OFFERS, hasPremiumAccess } from "./subscription.ts";
-import { saspayLiveClient, sasPayOrderDescription, verifiedSasPayResult, sasPayWebhookSecretConfigured } from "./saspay.ts";
+import { saspayLiveClient, sasPayOrderDescription, verifiedSasPayResult, sasPayWebhookSecretConfigured, verifiedSasPayCheckout, verifiedSasPayCheckoutResult } from "./saspay.ts";
 
 export function livePaymentRuntime(env = process.env) {
   return env.VERCEL === "1" && env.VERCEL_ENV === "production" && env.PREMIUM_ENVIRONMENT === "live";
@@ -66,6 +66,17 @@ export async function refreshLivePayment(order: StoredPremiumOrder, paidAt = new
   if (order.environment !== "live" || !order.providerSessionId) throw new Error("Commande live requise");
   const store = premiumRedis("live");
   if (order.provider === "saspay") {
+    if (order.providerFlow === "checkout") {
+      const client = saspayLiveClient();
+      const state = await client.checkoutStatus(order.providerSessionId);
+      // Read detail AFTER status, which can update the linked transaction.
+      const session = await client.checkout(order.providerSessionId);
+      const payment = state.status === "PAID" && state.transaction_id ? await client.verify(state.transaction_id) : undefined;
+      const result = verifiedSasPayCheckoutResult(order, session, state, payment);
+      if (result.status === "confirmed") return store.confirmPayment(result.payment);
+      if (result.status === "cancelled") return store.markUnpaid(order.id, order.providerSessionId, result.status);
+      return order;
+    }
     const result = verifiedSasPayResult(order, await saspayLiveClient().verify(order.providerSessionId));
     if (result.status === "confirmed") return store.confirmPayment(result.payment);
     if (result.status === "failed" || result.status === "cancelled") return store.markUnpaid(order.id, order.providerSessionId, result.status);
@@ -88,8 +99,25 @@ export async function findLiveSasPayOrder(paymentId: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const order = await store.getOrder(id);
   if (!order || order.provider !== "saspay") return null;
+  if (order.providerFlow === "checkout") return order;
+  // Recover a hosted session saved by SasPay just before a network/Redis failure.
+  if (!order.providerSessionId && await premiumRedisCommand(["GET", `the-browser:{premium:live}:saspay-checkout:${id}`])) return ensureLiveSasPayCheckout(order);
   verifiedSasPayResult({ ...order, providerSessionId: paymentId }, payment);
   return store.bindSession(id, paymentId);
+}
+
+/** Checkout creation is NOT idempotent at SasPay. A durable creation marker
+ * prevents blind retries after an ambiguous network failure; reconcile instead. */
+export async function ensureLiveSasPayCheckout(order: StoredPremiumOrder, customer?: { name: string; email: string }, origin?: string) {
+  if (order.environment !== "live" || order.provider !== "saspay") throw new Error("Commande SasPay live requise");
+  if (order.providerSessionId) return order; // Also preserves pending legacy softpay payments.
+  const marker = `the-browser:{premium:live}:saspay-checkout:${order.id}`;
+  const client = saspayLiveClient();
+  const creating = customer && origin && await premiumRedisCommand(["SET", marker, "started", "NX"]) === "OK";
+  const session = creating ? await client.createCheckout(order.id, customer, origin!) : await client.findCheckout(order.id);
+  if (!session) throw new Error("Session en cours de rapprochement ; ne pas recréer");
+  const verified = verifiedSasPayCheckout(order, session);
+  return premiumRedis("live").bindSession(order.id, verified.id, verified.checkoutUrl, "checkout");
 }
 /** Serializes purchases for one account; no concurrent provider checkouts. */
 export async function withLivePurchase<T>(user: string, operation: (lease: () => Promise<void>) => Promise<T>) {

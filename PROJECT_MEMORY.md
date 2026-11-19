@@ -4,11 +4,19 @@ Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriét
 
 ## État actuel — paiements ouverts le 19 novembre 2026
 
-- Production : carte Stripe **4,57 EUR** et SasPay Mobile Money Congo **3000 XAF** proposés sur /premium, renouvellement manuel, authentification Telegram et consentement aux conditions obligatoires.
+- Production : carte Stripe **4,57 EUR** et SasPay **3000 XAF** proposés sur /premium, renouvellement manuel, authentification Telegram et consentement aux conditions obligatoires.
 - Contrôle privé final : comptes/API et destinations webhook Live vérifiés, Stripe encaissements/virements autorisés, maintenance cron-job.org fraîche. PREMIUM_SALES_ENABLED, STRIPE_LIVE_ENABLED, SASPAY_LIVE_ENABLED à1 en Production. Dernier déploiement vérifié Ready : dpl_F47t7odmWYPg1jpcwHykeg3oLHqX.
 - Les essais Sandbox/Stripe test sont distincts et fermés sur le domaine Production. SasPay Sandbox paiement→webhook→commande Redis testé, signature rétablie. Aucun paiement/débit Live de test n’a été déclenché par l’agent ; premier règlement humain et attribution Live complète restent à observer.
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Source code de paiement vérifiée : 147 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
+
+## SasPay multipays — 19 novembre 2026
+
+Demande explicite du propriétaire d’élargir le paiement. Checkout hébergé implémenté : nom/e-mail, prix serveur3000.00 XAF, sans imposer CG/réseau/+242 ; choix des options et devise chez SasPay. La documentation officielle confirme `country` facultatif (présélection) et gère les OTP ; elle ne garantit pas explicitement la détection automatique du pays par localisation. Ne pas promettre tous les pays ni inventer de taux. Stripe4,57EUR conservé.
+
+Session marchande d’origine rapprochée avec commande/prix/environnement, statut PAID et même transaction liée, puis verify SUCCESS entrant avant confirmation. Le prix local peut différer par conversion. ID checkout et ID transaction distincts ; anciennes commandes directes compatibles. Création non idempotente chez SasPay : marqueur Redis durable et rapprochement par métadonnées après perte de réponse, aucun retry aveugle. Webhooks/secrets existants conservés. Conditions et confidentialité adaptées. Détails dans docs/live-payments.md.
+
+Validation locale : 152 tests, intégration HTTP Live avec conversion simulée/webhook/doublon/réponse perdue, ancien parcours HTTP test et Redis réel isolé réussis ; lint0erreur (17warnings d’outillage), build réussi. Vraie session Sandbox sans pays créée puis annulée HTTP200, aucun débit. Paiement humain réel dans une autre devise encore non vérifié. Déploiement de cette évolution en cours ; ne pas confondre ces preuves avec un achat Live terminé.
 
 ## Refonte visuelle cinéma — 16 novembre 2026
 

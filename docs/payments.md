@@ -213,3 +213,8 @@ Cause identifiée : marqueur technique du secret cloud utilisé comme clé HMAC 
 ### Deux moyens de paiement Live ouverts — 19 novembre 2026
 
 Stripe carte4,57EUR et SasPay Mobile Money Congo3000XAF activés en Production après contrôles réels des clés/comptes et des destinations webhook. Le rejet Stripe401 a été résolu par la nouvelle clé secrète saisie directement dans Vercel. Ordonnanceur externe frais. Authentification Telegram, consentement aux conditions et rapprochement serveur requis ; drapeaux séparés par prestataire pour suspendre un moyen sans fermer l’autre. Aucun paiement Live de test automatique ; premier achat humain reste à valider. Coordonnées administratives manquantes signalées, ouverture demandée explicitement par le propriétaire. Voir docs/live-payments.md et l’état actuel en tête de PROJECT_MEMORY.md.
+
+
+## Élargissement SasPay multipays — 19 novembre 2026
+
+Le paiement Live utilise désormais le checkout hébergé SasPay, sans restriction CG ni téléphone +242 dans le formulaire. Prix source3000.00 XAF et conversion/options proposées sur la page SasPay, sous réserve de sa couverture active. Nom/e-mail seulement collectés sur le site ; Stripe carte4,57EUR conservé. La documentation confirme un pays facultatif pour présélection, sans garantie explicite de géolocalisation automatique. Confirmation du prix source et de la transaction liée via les API marchandes, verify SUCCESS obligatoire, aucun droit depuis le retour navigateur. Voir [live-payments.md](live-payments.md#checkout-saspay-multipays--19-novembre-2026) pour preuves et limites ; les paragraphes historiques décrivant uniquement le Congo ne décrivent plus le nouveau formulaire Live.

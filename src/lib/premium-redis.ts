@@ -6,6 +6,7 @@ export type StoredPremiumOrder = PremiumOrder & {
   environment: "test" | "live";
   providerSessionId?: string;
   providerCheckoutUrl?: string;
+  providerFlow?: "checkout";
 };
 
 export class PremiumStorageError extends Error {
@@ -103,6 +104,7 @@ export function premiumRedis(environment: "test" | "live") {
       const expected = createPremiumOrder(id, value.provider);
       if (value.currency !== expected.currency || value.amountMinor !== expected.amountMinor) throw new Error();
       if (value.providerSessionId !== undefined) providerIdentifier(value.providerSessionId);
+      if (value.providerFlow !== undefined && (value.providerFlow !== "checkout" || value.provider !== "saspay" || !value.providerSessionId)) throw new Error();
       if (value.providerCheckoutUrl !== undefined) {
         const url = new URL(value.providerCheckoutUrl);
         if (value.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) throw new Error();
@@ -140,18 +142,21 @@ export function premiumRedis(environment: "test" | "live") {
     return saved;
   }
 
-  async function bindSession(id: string, sessionId: string, checkoutUrl?: string) {
+  async function bindSession(id: string, sessionId: string, checkoutUrl?: string, providerFlow?: "checkout") {
     providerIdentifier(sessionId);
     for (let attempt = 0; attempt < 8; attempt++) {
       const current = await load(id);
       if (!current) throw new PremiumStorageError("MISSING");
       if (current.order.providerSessionId && current.order.providerSessionId !== sessionId) throw new PremiumStorageError("SESSION_CONFLICT");
+      if (providerFlow !== undefined && (providerFlow !== "checkout" || current.order.provider !== "saspay")) throw new PremiumStorageError("SESSION_CONFLICT");
+      if (current.order.providerSessionId && current.order.providerFlow !== providerFlow) throw new PremiumStorageError("SESSION_CONFLICT");
       if (checkoutUrl !== undefined) {
         const url = new URL(checkoutUrl);
         if (current.order.provider !== "saspay" || url.protocol !== "https:" || url.hostname !== (environment === "test" ? "sandbox-checkout.saspay.me" : "pay.saspay.me") || url.username || url.password || url.port) throw new PremiumStorageError("REDIRECT");
         if (current.order.providerCheckoutUrl && current.order.providerCheckoutUrl !== checkoutUrl) throw new PremiumStorageError("SESSION_CONFLICT");
       }
       const updated = { ...current.order, providerSessionId: sessionId,
+        ...(providerFlow === undefined ? {} : { providerFlow }),
         ...(checkoutUrl === undefined ? {} : { providerCheckoutUrl: checkoutUrl }) };
       const result = await command(["EVAL", BIND, 2, orderKey(id), sessionKey(updated.provider, sessionId), current.raw, JSON.stringify(updated), id]);
       if (result === "RETRY") continue;

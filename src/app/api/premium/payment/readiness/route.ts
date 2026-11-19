@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const failure = error as { statusCode?: number; code?: string };
     stripeError = { status: failure.statusCode ?? null, code: typeof failure.code === "string" && /^[a-z_]{1,64}$/.test(failure.code) ? failure.code : "request_failed" };
   }
-  try { if (saspayConfigured) { const client = saspayLiveClient(); saspayWebhookConfigured = await client.webhookConfigured(`${process.env.SITE_URL?.replace(/\/$/, "")}/api/saspay/webhook`); saspayVerified = await client.merchantCheck() && (await client.networks()).length > 0 && saspayWebhookConfigured; } } catch {}
+  try { if (saspayConfigured) { const client = saspayLiveClient(); saspayWebhookConfigured = await client.webhookConfigured(`${process.env.SITE_URL?.replace(/\/$/, "")}/api/saspay/webhook`); saspayVerified = await client.merchantCheck() && saspayWebhookConfigured; } } catch {}
   const last = await premiumRedisCommand(["GET", "the-browser:{premium:live}:expiration-sweep:last-success"]);
   const schedulerFresh = typeof last === "string" && Number.isFinite(Date.parse(last)) && Date.now() - Date.parse(last) < 15 * 60_000 && Date.parse(last) <= Date.now() + 60_000;
   return Response.json({ salesEnabled: premiumSalesEnabled(), stripeConfigured, stripeVerified, stripeWebhookConfigured, stripeAccount, stripeError, saspayConfigured, saspayVerified, saspayWebhookConfigured, schedulerFresh }, { headers: { "Cache-Control": "private, no-store" } });

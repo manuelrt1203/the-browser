@@ -1,8 +1,8 @@
-import { premiumSalesEnabled, liveProviderEnabled, stripeLiveClient, stripeLiveAccountReady, liveCheckoutParameters, withLivePurchase, purchaseConflict, refreshLivePayment } from "@/lib/premium-sales";
+import { premiumSalesEnabled, liveProviderEnabled, stripeLiveClient, stripeLiveAccountReady, liveCheckoutParameters, withLivePurchase, purchaseConflict, refreshLivePayment, ensureLiveSasPayCheckout } from "@/lib/premium-sales";
 import { premiumIdentity } from "@/lib/premium-session";
 import { isPremiumSameOrigin, premiumSiteOrigin } from "@/lib/premium-auth";
 import { premiumRedis, premiumRedisCommand, validPremiumOrderId } from "@/lib/premium-redis";
-import { saspayLiveClient, sasPayCustomer } from "@/lib/saspay";
+import { sasPayCheckoutCustomer } from "@/lib/saspay";
 
 export async function POST(request: Request) {
   if (!premiumSalesEnabled()) return new Response(null, { status: 404 });
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     if (!liveProviderEnabled(provider)) return Response.json({ error: "Ce moyen de paiement est momentanément indisponible." }, { status: 503 });
     const last = await premiumRedisCommand(["GET", "the-browser:{premium:live}:expiration-sweep:last-success"]);
     if (typeof last !== "string" || !Number.isFinite(Date.parse(last)) || Date.now() - Date.parse(last) > 15 * 60_000 || Date.parse(last) > Date.now() + 60_000) throw new Error("Maintenance non disponible");
-    const customer = provider === "saspay" ? sasPayCustomer(input) : null;
+    const customer = provider === "saspay" ? sasPayCheckoutCustomer(input) : null;
     return await withLivePurchase(identity.telegramUserId, async lease => {
       const store = premiumRedis("live");
       let order = await store.getOrder(id);
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
         if (session.url) { const u = new URL(session.url); if (u.protocol !== "https:" || u.hostname !== "checkout.stripe.com" || u.username || u.password || u.port) throw new Error("Checkout invalide"); checkoutUrl = u.toString(); }
         await lease(); await store.bindSession(id, session.id);
       } else {
-        if (!order.providerSessionId) { await lease(); const payment = await saspayLiveClient().initiate(id, customer); await lease(); order = await store.bindSession(id, payment.id, payment.checkoutUrl ?? undefined); }
+        await lease(); order = await ensureLiveSasPayCheckout(order, customer!, premiumSiteOrigin()); await lease();
         checkoutUrl = order.providerCheckoutUrl ?? null;
       }
       // Payment completion is always re-read from the provider, never the browser.

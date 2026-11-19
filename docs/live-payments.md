@@ -20,7 +20,7 @@ Ne jamais copier un marqueur cloud pour une clé HMAC. Ces secrets sont différe
 
 ## Parcours
 
-La page `/premium` affiche seulement les prestataires configurés. Stripe : Checkout hébergé, achat ponctuel 457 centimes EUR, sans Billing récurrent, prix serveur. SasPay : MTN/Airtel CG selon référentiel actif, montant décimal 3000.00 XAF ; frais retenus côté marchand pour ne pas ajouter de supplément au prix du site. Les contraintes opérateur restent à valider lors du premier parcours réel.
+La page `/premium` affiche seulement les prestataires configurés. Stripe : Checkout hébergé, achat ponctuel 457 centimes EUR, sans Billing récurrent, prix serveur. SasPay : checkout hébergé multipays, montant source décimal 3000.00 XAF ; pays, réseau et numéro ne sont plus imposés par le site. Le client choisit parmi les options actives de SasPay, qui gère aussi les OTP. Les options et le montant final dans la devise proposée sont affichés chez SasPay avant validation. `fee_charge_mode=DEDUCTED` est envoyé ; son respect dépend de la configuration marchand `ALLOW_CLIENT_OVERRIDE`, comme le précise la documentation. Ne pas promettre une couverture universelle ni un taux de conversion inventé.
 
 `POST /api/premium/payment` exige origine identique, session Telegram confirmée, UUID de tentative, consentement aux conditions courantes et prix imposé côté serveur. Un verrou par compte sérialise les créations. Une autre commande pending ou une période active bloque une nouvelle commande : pas de renouvellement anticipé/cumul non défini. Conserver le même UUID après erreur réseau. Une tentative terminée utilise un nouvel UUID.
 
@@ -44,3 +44,16 @@ Le contrôle privé vérifie également les destinations enregistrées chez les 
 ## État vérifié du 19 novembre 2026
 
 Stripe et SasPay sont ouverts en Production : carte4,57EUR et Mobile Money Congo3000FCFA, authentification et consentement obligatoires. L’ancienne erreur401 Stripe est résolue après nouvelle clé et redéploiement : compte Live, encaissements/virements autorisés et webhook corrects. API/réseaux/webhook SasPay et fraîcheur de maintenance validés. Les trois drapeaux de ventes/prestataires sont à1. Achat anonyme refusé401, pilotes testProduction404. Aucun encaissement Live de test n’a été déclenché automatiquement ; ne pas confondre ouverture du formulaire et paiement réel de bout en bout déjà validé.
+
+
+## Checkout SasPay multipays — 19 novembre 2026
+
+Références officielles vérifiées : [vue d’ensemble](https://docs.saspay.me/api-reference/payments), [création](https://docs.saspay.me/api-reference/payments/checkout-create), [statut](https://docs.saspay.me/api-reference/payments/checkout-status), [OpenAPI](https://docs.saspay.me/api-reference/openapi.json). `country` est facultatif et ne fait que présélectionner un pays. La détection automatique du pays par géolocalisation n’est pas explicitement garantie par ces pages : ne pas la présenter comme un fait vérifié. Aucune géolocalisation/IP du serveur Vercel n’est transmise comme celle du client.
+
+Le site crée `POST /checkout-sessions/` avec nom/e-mail, référence de commande, métadonnées environnement, retour /premium?order=UUID et expiration24h. Une session ne débite rien avant validation du client. Son ID est stocké avec `providerFlow=checkout`, distinct de l’ID transaction. Les anciennes commandes softpay restent vérifiables sans migration. Les URL et signatures webhook existantes sont conservées.
+
+Confirmation : statut marchand PAID → détail marchand avec prix source3000 XAF et bonne commande/environnement → même transaction liée dans les deux réponses → `GET /payments/{id}/verify/` SUCCESS entrant. La devise locale de transaction peut différer de XAF ; seule la session marchande d’origine justifie le prix contractuel enregistré. Retour navigateur, payload webhook seul, transaction non liée, mauvais prix ou environnement ne livrent rien. Redis garde l’unicité du paiement et ne prolonge pas un abonnement lors d’un doublon.
+
+L’endpoint de création SasPay ne prend PAS en charge Idempotency-Key. Un marqueur Redis durable réserve l’unique création par commande. Après une réponse perdue, rechercher la session via la liste marchande et ses métadonnées ; ne pas relancer aveuglément une création. Si la session reste introuvable ou s’il existe plusieurs correspondances, échouer sans nouvelle création et faire rapprocher la commande par le support. Le marqueur est volontairement conservé, sans expiration qui autoriserait un doublon. Un échec de transaction peut être réessayé dans la même session hébergée ; seules les sessions annulées/expirées terminent la tentative locale.
+
+Vérifié : création d’une vraie session Sandbox sans pays imposé, référence3000.00 XAF conservée, URL sandbox-checkout.saspay.me, statut PENDING et annulation HTTP200 ; aucun numéro ni débit. Conversion et confirmation multipays couvertes par tests isolés (prestataire simulé), pas encore par un paiement humain réel dans une autre devise. Le pilote Sandbox historique MTN/Airtel reste disponible uniquement en Preview/test et conserve son flux direct.
