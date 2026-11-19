@@ -113,11 +113,18 @@ function sasPayClient(environment: "test" | "live", key: string) {
   }
   async function findCheckout(orderId: string) {
     if (!sasPayId(orderId)) throw new SasPayError("ORDER_ID");
+    return matchingCheckout(s => s.metadata?.order_id === orderId && s.metadata?.environment === environment);
+  }
+  async function checkoutForPayment(paymentId: string) {
+    if (!sasPayId(paymentId)) throw new SasPayError("PAYMENT_ID");
+    return matchingCheckout(s => s.transaction === paymentId && s.metadata?.environment === environment);
+  }
+  async function matchingCheckout(matchesSession: (session: SasPayCheckout) => boolean) {
     const matches: SasPayCheckout[] = [];
     for (let page = 1; page <= 20; page++) {
       const data = await request(`/checkout-sessions/?page_size=100&page=${page}`) as { results?: SasPayCheckout[]; next?: unknown };
       if (!Array.isArray(data.results)) throw new SasPayError("CHECKOUT_LIST");
-      matches.push(...data.results.filter(s => s.metadata?.order_id === orderId && s.metadata?.environment === environment));
+      matches.push(...data.results.filter(matchesSession));
       if (!data.next) {
         if (matches.length > 1) throw new SasPayError("CHECKOUT_CONFLICT");
         return matches[0] ?? null;
@@ -142,7 +149,7 @@ function sasPayClient(environment: "test" | "live", key: string) {
     return hooks.some(hook => hook.url === expectedUrl && hook.is_active === true && hook.environment === (environment === "live" ? "LIVE" : "SANDBOX") &&
       ["transaction.success", "transaction.failed", "transaction.cancelled"].every(event => subscriptions.some(s => s.webhook === hook.id && s.event_type === event)));
   }
-  return { networks, initiate, verify, createCheckout, checkout, checkoutStatus, findCheckout, merchantCheck, webhookConfigured };
+  return { networks, initiate, verify, createCheckout, checkout, checkoutStatus, findCheckout, checkoutForPayment, merchantCheck, webhookConfigured };
 }
 
 export function sasPayCheckoutCustomer(input: unknown) {
@@ -181,7 +188,6 @@ export function verifiedSasPayCheckoutResult(order: StoredPremiumOrder, session:
     if (!payment || state.transaction_status !== "SUCCESS" || !sasPayId(state.transaction_id) ||
         state.transaction_id !== payment.id || session.transaction !== payment.id || payment.status !== "SUCCESS" ||
         payment.transaction_type !== "PAIEMENT" || payment.flow_direction !== "INBOUND" ||
-        payment.description !== sasPayOrderDescription(order.id, order.environment) ||
         !/^[A-Z]{3}$/.test(payment.currency) || typeof payment.requested_amount !== "string" ||
         !/^\d+(?:\.\d{1,2})?$/.test(payment.requested_amount) || !/[1-9]/.test(payment.requested_amount) ||
         !Number.isFinite(Date.parse(payment.updated_at))) throw new SasPayError("PAYMENT_MISMATCH");

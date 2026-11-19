@@ -15,8 +15,9 @@ test('checkout : source XAF et transaction locale liée, seul verify SUCCESS con
  const {order,session,state,payment}=fixture();
  const result=verifiedSasPayCheckoutResult(order,session,state,payment);
  assert.equal(result.status,'confirmed');assert.equal(result.payment.amountMinor,3000);assert.equal(result.payment.currency,'XAF');
+ assert.equal(verifiedSasPayCheckoutResult(order,session,state,{...payment,description:''}).status,'confirmed','la relation marchande fait foi, sans copie de description supposée');
  assert.equal(result.payment.sessionId,session.id);assert.equal(result.payment.paymentId,payment.id);
- for(const change of [{status:'PENDING'},{id:randomUUID()},{transaction_type:'PAYOUT'},{flow_direction:'OUTBOUND'},{requested_amount:'0.00'},{updated_at:'invalid'},{description:'other order'}])assert.throws(()=>verifiedSasPayCheckoutResult(order,session,state,{...payment,...change}));
+ for(const change of [{status:'PENDING'},{id:randomUUID()},{transaction_type:'PAYOUT'},{flow_direction:'OUTBOUND'},{requested_amount:'0.00'},{updated_at:'invalid'}])assert.throws(()=>verifiedSasPayCheckoutResult(order,session,state,{...payment,...change}));
  assert.throws(()=>verifiedSasPayCheckoutResult(order,session,state));
  for(const change of [{id:randomUUID()},{transaction_id:randomUUID()},{transaction_status:'PENDING'}])assert.throws(()=>verifiedSasPayCheckoutResult(order,session,{...state,...change},payment));
 });

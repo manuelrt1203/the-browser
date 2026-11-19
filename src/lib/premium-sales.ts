@@ -94,7 +94,19 @@ export async function findLiveSasPayOrder(paymentId: string) {
   if (known) return known;
   const payment = await saspayLiveClient().verify(paymentId);
   const prefix = sasPayOrderDescription("", "live");
-  if (!payment.description?.startsWith(prefix)) return null;
+  if (!payment.description?.startsWith(prefix)) {
+    // The spec does not promise that checkout descriptions are copied to the
+    // transaction. Resolve its relationship using the merchant API instead.
+    const session = await saspayLiveClient().checkoutForPayment(paymentId);
+    const id = session?.metadata?.order_id;
+    if (!session || !id || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+    const order = await store.getOrder(id);
+    if (!order || order.provider !== "saspay") return null;
+    verifiedSasPayCheckout(order, session);
+    if (order.providerSessionId) return order.providerFlow === "checkout" ? order : null;
+    if (!await premiumRedisCommand(["GET", `the-browser:{premium:live}:saspay-checkout:${id}`])) return null;
+    return store.bindSession(id, session.id, verifiedSasPayCheckout(order, session).checkoutUrl, "checkout");
+  }
   const id = payment.description.slice(prefix.length);
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const order = await store.getOrder(id);

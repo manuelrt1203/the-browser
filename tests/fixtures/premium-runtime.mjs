@@ -47,13 +47,13 @@ globalThis.fetch = async (input, options = {}) => {
       const session={...body,id,status:'PENDING',transaction:null,checkout_url:`https://${live?'pay':'sandbox-checkout'}.saspay.me/checkout/${id}`};
       checkouts.set(id,{session,paymentId});
       // The checkout may settle in another currency. Source amount stays on the session.
-      payments.set(paymentId,{id:paymentId,status:'PENDING',currency:'EUR',requested_amount:'4.57',description:body.description,transaction_type:'PAIEMENT',flow_direction:'INBOUND',updated_at:new Date().toISOString()});
+      payments.set(paymentId,{id:paymentId,status:'PENDING',currency:'EUR',requested_amount:'4.57',description:'',transaction_type:'PAIEMENT',flow_direction:'INBOUND',updated_at:new Date().toISOString()});
       const state=JSON.parse(await readFile(process.env.PREMIUM_TEST_PAYMENT_STATE,'utf8'));
       const loseResponse=state.dropCheckoutResponse;state.dropCheckoutResponse=false;state.paymentIds={...state.paymentIds,[body.metadata.order_id]:paymentId};state.checkoutCreates=(state.checkoutCreates??0)+1;await writeFile(process.env.PREMIUM_TEST_PAYMENT_STATE,JSON.stringify(state));
       if(loseResponse)throw new Error('Simulated lost provider response AFTER session creation');
       return Response.json({success:true,data:session});
     }
-    if(url.pathname==='/api/v1/checkout-sessions/')return Response.json({success:true,data:{next:null,results:[...checkouts.values()].map(c=>c.session)}});
+    if(url.pathname==='/api/v1/checkout-sessions/'){const state=JSON.parse(await readFile(process.env.PREMIUM_TEST_PAYMENT_STATE,'utf8'));if(state.saspayPaid)for(const c of checkouts.values()){c.session.status='PAID';c.session.transaction=c.paymentId;}return Response.json({success:true,data:{next:null,results:[...checkouts.values()].map(c=>c.session)}});}
     const checkoutMatch=url.pathname.match(/\/checkout-sessions\/([^/]+)\/(status\/)?$/);
     if(checkoutMatch && checkouts.has(checkoutMatch[1])){
       const {session,paymentId}=checkouts.get(checkoutMatch[1]),state=JSON.parse(await readFile(process.env.PREMIUM_TEST_PAYMENT_STATE,'utf8'));
