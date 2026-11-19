@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac,randomUUID } from 'node:crypto';
-import { saspayTestClient,sasPayCustomer,verifySasPaySignature,verifiedSasPayResult,saspayTestEnabled,sasPayOrderDescription } from '../src/lib/saspay.ts';
+import { saspayTestClient,sasPayCustomer,verifySasPaySignature,verifiedSasPayResult,saspayTestEnabled,sasPayOrderDescription,sasPayWebhookSecretConfigured } from '../src/lib/saspay.ts';
 import { createPremiumOrder } from '../src/lib/subscription.ts';
 
 const customer={firstName:'Test',lastName:'Client',email:'client@example.com',phone:'+242061234567',network:'fixture_mtn_cg'};
@@ -17,6 +17,24 @@ test('SasPay : signature corps brut/horodatage, rejet des valeurs malformées et
   const signature=createHmac('sha256',secret).update(`${timestamp}.${body}`).digest('hex');
   assert.equal(verifySasPaySignature(body,signature,timestamp,secret,now),true);
   for(const [b,s,t,n] of [[body+' ',signature,timestamp,now],[body,signature,'NaN',now],[body,signature,timestamp,now+301000],[body,'abc',timestamp,now],[body,signature,timestamp,now-301000]])assert.equal(verifySasPaySignature(b,s,t,secret,n),false);
+});
+test('SasPay : un marqueur de secret ne valide jamais une signature, même calculée avec ce marqueur',()=>{
+  const body='{"event":"webhook.test"}', timestamp='1794820000', now=Number(timestamp)*1000;
+  for(const secret of ['__managed_codex_secret_fixture__','__MANAGED_CODEX_SECRET_FIXTURE__']) {
+    const signature=createHmac('sha256',secret).update(`${timestamp}.${body}`).digest('hex');
+    assert.equal(sasPayWebhookSecretConfigured(secret),false);
+    assert.equal(verifySasPaySignature(body,signature,timestamp,secret,now),false);
+  }
+  for(const secret of [undefined,'','   '])assert.equal(sasPayWebhookSecretConfigured(secret),false);
+  assert.equal(sasPayWebhookSecretConfigured('raw_fixture_signing_secret'),true);
+});
+test('SasPay : conserve les octets UTF-8 et le formatage exact du corps signé',()=>{
+  const body=Buffer.from('{ "event": "webhook.test", "data": {"titre":"Été à Brazzaville 🎬"} }\n','utf8');
+  const secret='raw_fixture_signing_secret',timestamp='1794820000',now=Number(timestamp)*1000;
+  const signature=createHmac('sha256',secret).update(Buffer.concat([Buffer.from(timestamp+'.'),body])).digest('hex');
+  assert.equal(verifySasPaySignature(body,signature,timestamp,secret,now),true);
+  assert.equal(verifySasPaySignature(JSON.stringify(JSON.parse(body.toString())),signature,timestamp,secret,now),false);
+  assert.equal(verifySasPaySignature(body,signature,timestamp,secret,now+301000),false);
 });
 test('SasPay : montant demandé exact, devise, sens entrant et paiement rapproché requis',()=>{
   const id=randomUUID(),paymentId=randomUUID();const order={...createPremiumOrder(id,'saspay'),environment:'test',telegramUserId:'123',providerSessionId:paymentId};

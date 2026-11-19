@@ -1,6 +1,6 @@
 # Mémoire du projet — The Browser
 
-Mise à jour : 16 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
 ## Refonte visuelle cinéma — 16 novembre 2026
 
@@ -476,3 +476,12 @@ Support renvoie vers documentation et configuration. Lecture actuelle de llms.tx
 ### Renvoi SasPay contrôlé — 19 novembre 2026
 
 Après confirmation utilisateur « fait », lecture seule webhook-logs sandbox : 30 entrées (25 avant), cinq nouvelles tentatives transaction.success pour transaction 584ed9ae-9a05-4e5c-ac0c-131b9b4a5832. Livraisons du 19 novembre vers 09:22:35–09:22:38 UTC, toutes HTTP400 « Signature ou horodatage invalide ». Dernière livraison c1dec6af-8733-477b-a57f-be2c63cca43a, attempt5, FAILED, sent_at 09:22:37.796040 UTC. Webhook inchangé 6248c058-5a7c-476d-9631-01da64bd719f. Le renvoi récent reproduit donc le rejet ; cela n’établit pas sa cause (secret/signature/en-têtes/horodatage). Ne pas confondre cette transaction renvoyée avec la transaction 6d5d372f-2288-4701-b56e-833bb2ffe40d citée auparavant. Aucune mutation SasPay ni déploiement effectué par l’agent.
+
+
+### Cause technique du rejet HMAC identifiée — 19 novembre 2026
+
+Demande explicite de diagnostiquer et régler. SASPAY_WEBHOOK_SECRET_TEST injecté dans le processus cloud est un marqueur technique de substitution (constaté sans afficher sa valeur). Comparaison distante contrôlée : HMAC calculé avec ce marqueur accepté HTTP200 à la fois par le déploiement historique ct93diwel et par l’alias stable Premium test ; HMAC avec clé aléatoire rejeté400. Cela établit que les deux previews utilisent le marqueur pour leur HMAC, pas une valeur brute issue du coffre. Les anciennes conclusions « secret synthétique accepté donc correctement synchronisé » sont retirées ; elles ne prouvaient que la même mauvaise valeur des deux côtés du test. Aucune preuve de bug SasPay établie.
+
+API Vercel : variable TEST type sensitive, valeur vide/non déchiffrable par API ; ne pas interpréter le champ vide comme absence de variable ni tenter d’extraire le secret cloud via un service tiers. Action utilisateur demandée en parallèle : saisir le vrai SASPAY_WEBHOOK_SECRET_TEST directement dans Vercel Settings/Environment Variables/Preview, sans le partager en chat ; si perdu, rotation du seul webhook Sandbox nécessaire depuis SasPay. Ancienne URL de déploiement immuable à remplacer par l’alias stable après redéploiement.
+
+Correctifs locaux : refus marqueurs techniques et valeurs vides avant HMAC, configuration invalide HTTP503, vérification du corps binaire exact avant JSON. Tests de régression sur marqueur même auto-signé et conservation UTF8/formatage, 136 tests passés ; lint sans erreur (17 avertissements compétences locales), build réussi et intégration HTTP Redis/Stripe/SasPay passée. Production, paiements réels et canal commercial inchangés ; test externe frais nécessaire après saisie de la vraie valeur.

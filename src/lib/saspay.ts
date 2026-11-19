@@ -97,10 +97,15 @@ export function sasPayCustomer(input: unknown) {
   return { firstName, lastName, email, phone, network };
 }
 
-export function verifySasPaySignature(body: string, signature: string, timestamp: string, secret: string, now = Date.now()) {
-  if (!secret || !/^[0-9a-f]{64}$/.test(signature) || !/^[1-9]\d{8,11}$/.test(timestamp) ||
+/** A proxy substitution marker is not the signing secret and cannot be used for local HMAC. */
+export function sasPayWebhookSecretConfigured(secret: string | undefined): secret is string {
+  return !!secret?.trim() && !/^_+.*codex.*secret.*__$/i.test(secret);
+}
+
+export function verifySasPaySignature(body: string | Uint8Array, signature: string, timestamp: string, secret: string, now = Date.now()) {
+  if (!sasPayWebhookSecretConfigured(secret) || !/^[0-9a-f]{64}$/.test(signature) || !/^[1-9]\d{8,11}$/.test(timestamp) ||
       !Number.isFinite(now) || Math.abs(now / 1000 - Number(timestamp)) > 300) return false;
-  const expected = createHmac("sha256", secret).update(`${timestamp}.${body}`).digest();
+  const expected = createHmac("sha256", secret).update(`${timestamp}.`).update(body).digest();
   return timingSafeEqual(Buffer.from(signature, "hex"), expected);
 }
 

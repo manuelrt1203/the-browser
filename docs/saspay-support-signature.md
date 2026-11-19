@@ -1,5 +1,7 @@
 # Diagnostic signature webhook SasPay sandbox
 
+> Mise à jour du 19 novembre : le diagnostic initial ci-dessous est historique. Une erreur de configuration côté application a été identifiée : un marqueur de substitution cloud est utilisé comme clé HMAC sur les previews existantes. Le succès du test synthétique ne validait donc pas le véritable secret SasPay. Correction du contrôle préparée ; saisir le vrai secret dans Vercel Preview, redéployer et mettre à jour l’URL SasPay avant le prochain renvoi. Ne pas transmettre ce rapport initial comme preuve d’un défaut fournisseur.
+
 Bonjour,
 
 Notre intégration sandbox rencontre un refus de signature sur les notifications transaction.created et transaction.success. Pourriez-vous vérifier les en-têtes et la signature effectivement émis par le sandbox ?
