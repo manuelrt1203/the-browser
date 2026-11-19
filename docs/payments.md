@@ -208,3 +208,8 @@ Espace /mon-abonnement et API privée /api/premium/subscription implémentés : 
 ### Signature externe SasPay Sandbox résolue — 19 novembre 2026
 
 Cause identifiée : marqueur technique du secret cloud utilisé comme clé HMAC dans les previews, rendant les anciens tests synthétiques trompeurs. Garde contre les marqueurs ajoutée, vrai secret configuré directement dans Vercel Preview et webhook recréé sur URL stable. Paiement diagnostic MTN CG 3000 XAF SUCCESS, notifications réelles created/success HTTP200 DELIVERED, signatures invalides rejetées. Voir docs/saspay.md et la mémoire pour preuves. Aucun argent réel ni commande Redis/droit attribué ; parcours complet de commande test et encaissement Live encore à valider. Les anciens paragraphes de blocage HMAC sont historiques.
+
+
+### Deux moyens de paiement Live ouverts — 19 novembre 2026
+
+Stripe carte4,57EUR et SasPay Mobile Money Congo3000XAF activés en Production après contrôles réels des clés/comptes et des destinations webhook. Le rejet Stripe401 a été résolu par la nouvelle clé secrète saisie directement dans Vercel. Ordonnanceur externe frais. Authentification Telegram, consentement aux conditions et rapprochement serveur requis ; drapeaux séparés par prestataire pour suspendre un moyen sans fermer l’autre. Aucun paiement Live de test automatique ; premier achat humain reste à valider. Coordonnées administratives manquantes signalées, ouverture demandée explicitement par le propriétaire. Voir docs/live-payments.md et l’état actuel en tête de PROJECT_MEMORY.md.
