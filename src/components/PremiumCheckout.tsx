@@ -8,6 +8,7 @@ export function PremiumCheckout({ stripe, saspay, termsVersion }: { stripe: bool
   const params = useSearchParams();
   const [connected, setConnected] = useState(false), [provider, setProvider] = useState(stripe ? "stripe" : "saspay");
   const [attempt, setAttempt] = useState(""), [order, setOrder] = useState(params.get("order") ?? "");
+  const [needsRetry, setNeedsRetry] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [status, setStatus] = useState("");
   const [networks, setNetworks] = useState<{ code: string; name: string }[]>([]);
@@ -21,7 +22,7 @@ export function PremiumCheckout({ stripe, saspay, termsVersion }: { stripe: bool
   }, [connected, saspay]);
   async function refresh() {
     setBusy(true); setError("");
-    try { const r = await fetch(`/api/premium/payment/status?order=${encodeURIComponent(order)}`, { cache: "no-store" }); const data = await r.json().catch(() => ({})); if (!r.ok) throw new Error(r.status === 401 ? "Reconnectez votre compte Telegram." : data.error ?? "Vérification indisponible"); setStatus(data.status); setResumeUrl(data.checkoutUrl ?? null); }
+    try { const r = await fetch(`/api/premium/payment/status?order=${encodeURIComponent(order)}`, { cache: "no-store" }); const data = await r.json().catch(() => ({})); if (!r.ok) throw new Error(r.status === 401 ? "Reconnectez votre compte Telegram." : data.error ?? "Vérification indisponible"); setStatus(data.status); setResumeUrl(data.checkoutUrl ?? null); setNeedsRetry(!!data.needsRetry); if (data.provider) setProvider(data.provider); }
     catch (e) { setError(e instanceof Error ? e.message : "Vérification indisponible"); }
     finally { setBusy(false); }
   }
@@ -40,7 +41,7 @@ export function PremiumCheckout({ stripe, saspay, termsVersion }: { stripe: bool
   return <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6" aria-labelledby="achat-titre">
     <h2 id="achat-titre" className="text-2xl font-semibold">Mon mois Premium</h2>
     <TelegramAccount onChange={setConnected} />
-    {order ? <div className="mt-6 space-y-4"><p>Votre commande est enregistrée. Un retour de la page de paiement ne suffit pas à confirmer le règlement.</p><button type="button" className="button-primary" disabled={!connected || busy} onClick={refresh}>{busy ? "Vérification…" : "Vérifier ma commande"}</button>{resumeUrl && status === "pending" && <a className="button-primary block" href={resumeUrl}>Continuer le paiement →</a>}<Link className="button-secondary block" href="/mon-abonnement">Voir mon abonnement et accéder au canal →</Link></div> : <form className="mt-6 grid gap-4" onSubmit={pay}>
+    {order ? <div className="mt-6 space-y-4"><p>Votre commande est enregistrée. Un retour de la page de paiement ne suffit pas à confirmer le règlement.</p><button type="button" className="button-primary" disabled={!connected || busy} onClick={refresh}>{busy ? "Vérification…" : "Vérifier ma commande"}</button>{needsRetry && <><p>La demande doit être reprise avec les mêmes coordonnées. Votre référence de tentative sera conservée.</p><button type="button" className="button-secondary" onClick={() => { setAttempt(order); setOrder(""); setNeedsRetry(false); }}>Reprendre la demande</button></>}{resumeUrl && status === "pending" && <a className="button-primary block" href={resumeUrl}>Continuer le paiement →</a>}<Link className="button-secondary block" href="/mon-abonnement">Voir mon abonnement et accéder au canal →</Link></div> : <form className="mt-6 grid gap-4" onSubmit={pay}>
       <label className="grid gap-2">Moyen de paiement<select value={provider} disabled={!!attempt} onChange={e => setProvider(e.target.value)} className="genre-select">{stripe && <option value="stripe">Carte bancaire · 4,57 €</option>}{saspay && <option value="saspay">Mobile Money Congo · 3 000 FCFA</option>}</select></label>
       {provider === "saspay" && <><label className="grid gap-2">Prénom<input name="firstName" required autoComplete="given-name" maxLength={80} className="genre-select" /></label><label className="grid gap-2">Nom<input name="lastName" required autoComplete="family-name" maxLength={80} className="genre-select" /></label><label className="grid gap-2">E-mail<input name="email" required type="email" autoComplete="email" maxLength={254} className="genre-select" /></label><label className="grid gap-2">Téléphone Mobile Money<input name="phone" required type="tel" autoComplete="tel" placeholder="+242…" className="genre-select" /></label><label className="grid gap-2">Réseau<select name="network" required className="genre-select" defaultValue=""><option value="" disabled>Choisir le réseau</option>{networks.map(n => <option key={n.code} value={n.code}>{n.name}</option>)}</select></label></>}
       <p>Un mois, renouvellement manuel. Aucun prélèvement automatique. Le règlement doit être confirmé avant l’accès au canal.</p>

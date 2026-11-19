@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {livePaymentRuntime,premiumSalesEnabled,liveProviderReady,liveCheckoutParameters,verifiedLiveStripeSession,purchaseConflict,stripeLiveClient} from '../src/lib/premium-sales.ts';
+import {livePaymentRuntime,premiumSalesEnabled,liveProviderReady,liveCheckoutParameters,verifiedLiveStripeSession,purchaseConflict,stripeLiveClient,stripeLiveAccountReady} from '../src/lib/premium-sales.ts';
 import {saspayLiveClient,sasPayOrderDescription,verifiedSasPayResult} from '../src/lib/saspay.ts';
 const env={VERCEL:'1',VERCEL_ENV:'production',PREMIUM_ENVIRONMENT:'live',PREMIUM_SALES_ENABLED:'1',COMMERCE_REVIEWED:'1',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SELLER_NAME:'Fixture',SELLER_LEGAL_STATUS:'EI',SELLER_ADDRESS:'Adresse de test',SELLER_COUNTRY:'FR',SELLER_REGISTRATION:'fixture-registration',COMMERCIAL_TERMS_VERSION:'fixture-v1',SUPPORT_EMAIL:'support@example.com',STRIPE_SECRET_KEY:'sk_live_fixture',STRIPE_WEBHOOK_SECRET_LIVE:'whsec_fixture'};
 const id=randomUUID();
@@ -60,4 +60,10 @@ test('SasPay live : domaine production explicite, prix décimal et frais retenus
   await client.initiate(id,{firstName:'Test',lastName:'Client',email:'test@example.com',phone:'+242061234560',network:'actual_mtn'});
   assert.equal(initiation.amount,'3000.00');assert.equal(initiation.fee_charge_mode,'DEDUCTED');assert.equal(initiation.description,sasPayOrderDescription(id,'live'));
  }finally{globalThis.fetch=previousFetch;if(previousPolicy===undefined)delete process.env.SASPAY_LIVE_FEE_MODE;else process.env.SASPAY_LIVE_FEE_MODE=previousPolicy;}
+});
+
+test('un compte Stripe restreint ne passe pas la vérification de mise en vente',async()=>{
+ const client=(livemode,charges,payouts)=>({balance:{retrieve:async()=>({livemode})},accounts:{retrieve:async()=>({charges_enabled:charges,payouts_enabled:payouts})}});
+ assert.equal(await stripeLiveAccountReady(client(true,true,true)),true);
+ for(const args of [[false,true,true],[true,false,true],[true,true,false]])assert.equal(await stripeLiveAccountReady(client(...args)),false);
 });

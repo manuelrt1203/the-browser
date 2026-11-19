@@ -20,6 +20,7 @@ globalThis.fetch = async (input, options = {}) => {
     return Response.json({ result: JSON.parse(stdout) });
   }
   if (url.hostname === 'api.stripe.com') {
+    if (url.pathname === '/v1/account') return Response.json({object:'account',charges_enabled:true,payouts_enabled:true});
     if (url.pathname === '/v1/balance') return Response.json({ object:'balance',livemode:live });
     if (url.pathname === '/v1/checkout/sessions' && options.method === 'POST') {
       const params = new URLSearchParams(options.body);

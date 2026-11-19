@@ -1,4 +1,4 @@
-import { premiumSalesEnabled, liveProviderReady, stripeLiveClient, liveCheckoutParameters, withLivePurchase, purchaseConflict, refreshLivePayment } from "@/lib/premium-sales";
+import { premiumSalesEnabled, liveProviderReady, stripeLiveClient, stripeLiveAccountReady, liveCheckoutParameters, withLivePurchase, purchaseConflict, refreshLivePayment } from "@/lib/premium-sales";
 import { premiumIdentity } from "@/lib/premium-session";
 import { isPremiumSameOrigin, premiumSiteOrigin } from "@/lib/premium-auth";
 import { premiumRedis, premiumRedisCommand, validPremiumOrderId } from "@/lib/premium-redis";
@@ -28,13 +28,14 @@ export async function POST(request: Request) {
       if (purchaseConflict(await store.listOrders(identity.telegramUserId), id)) return Response.json({ error: "Un abonnement actif ou un autre paiement est déjà enregistré. Consultez Mon abonnement avant une nouvelle tentative." }, { status: 409 });
       if (order?.status === "confirmed") return Response.json({ orderId: id, status: order.status, checkoutUrl: null }, { headers: { "Cache-Control": "no-store" } });
       if (order && order.status !== "pending") return Response.json({ error: "Cette tentative est terminée. Lancez une nouvelle commande." }, { status: 409 });
+      const stripeClient = provider === "stripe" ? stripeLiveClient() : null;
+      if (stripeClient && !await stripeLiveAccountReady(stripeClient)) throw new Error("Compte Stripe non activé");
       await lease();
       order ??= await store.createOrder(id, identity.telegramUserId, provider);
       await premiumRedisCommand(["SET", `the-browser:{premium:live}:terms:${id}`, JSON.stringify({ version: process.env.COMMERCIAL_TERMS_VERSION, acceptedAt: new Date().toISOString() }), "NX"]);
       let checkoutUrl: string | null = null;
       if (provider === "stripe") {
-        const client = stripeLiveClient();
-        if (!(await client.balance.retrieve()).livemode) throw new Error("Compte Stripe live requis");
+        const client = stripeClient!;
         await lease();
         const session = order.providerSessionId ? await client.checkout.sessions.retrieve(order.providerSessionId) : await client.checkout.sessions.create(liveCheckoutParameters(id, premiumSiteOrigin()), { idempotencyKey: `the-browser-live-${id}` });
         if (!session.livemode || !session.id.startsWith("cs_live_") || session.client_reference_id !== id || session.amount_total !== 457 || session.currency !== "eur") throw new Error("Session incompatible");

@@ -24,6 +24,10 @@ export function stripeLiveClient(key = process.env.STRIPE_SECRET_KEY ?? "") {
   if (!/^(sk|rk)_live_/.test(key)) throw new Error("Clé Stripe live réelle requise");
   return new Stripe(key, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 });
 }
+export async function stripeLiveAccountReady(client = stripeLiveClient()) {
+  const [balance, account] = await Promise.all([client.balance.retrieve(), client.accounts.retrieve()]);
+  return balance.livemode && account.charges_enabled === true && account.payouts_enabled === true;
+}
 export function liveCheckoutParameters(orderId: string, origin: string): Stripe.Checkout.SessionCreateParams {
   const url = new URL(origin);
   if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) throw new Error("Origine invalide");
