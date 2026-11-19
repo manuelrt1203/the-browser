@@ -38,3 +38,5 @@ Validation avant ouverture : vérifier les comptes avec readiness, activer expli
 
 
 Chaque prestataire est activé séparément après le contrôle privé. Un compte Stripe non vérifié reste à STRIPE_LIVE_ENABLED=0 même si SasPay est ouvert, afin de ne pas afficher un moyen indisponible. La route d’achat vérifie aussi ce drapeau côté serveur. Le webhook d’un paiement déjà engagé reste traitable pendant une suspension du prestataire.
+
+Le contrôle privé vérifie également les destinations enregistrées chez les prestataires : URL exacte, mode Live, activité du webhook et événements requis. Il n’affiche aucune donnée de compte Stripe, seulement mode/encaissements/virements et un statut d’erreur technique sans message susceptible de contenir une clé. Un simple secret enregistré localement ne prouve pas la configuration distante ni une livraison signée réelle ; conserver la validation du premier paiement choisi par le client.

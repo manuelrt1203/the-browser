@@ -36,6 +36,12 @@ export async function stripeLiveAccountReady(client = stripeLiveClient()) {
   const state = await stripeLiveAccountState(client);
   return state.liveMode && state.chargesEnabled && state.payoutsEnabled;
 }
+export async function stripeLiveWebhookConfigured(client: Stripe, expectedUrl: string) {
+  const endpoints = await client.webhookEndpoints.list({ limit: 100 });
+  const events = ["checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired"];
+  return endpoints.data.some(endpoint => endpoint.livemode && endpoint.status === "enabled" && endpoint.url === expectedUrl &&
+    (endpoint.enabled_events.includes("*") || events.every(event => endpoint.enabled_events.includes(event))));
+}
 export function liveCheckoutParameters(orderId: string, origin: string): Stripe.Checkout.SessionCreateParams {
   const url = new URL(origin);
   if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) throw new Error("Origine invalide");

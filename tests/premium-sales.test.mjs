@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {livePaymentRuntime,premiumSalesEnabled,liveProviderReady,liveProviderEnabled,liveCheckoutParameters,verifiedLiveStripeSession,purchaseConflict,stripeLiveClient,stripeLiveAccountReady} from '../src/lib/premium-sales.ts';
+import {livePaymentRuntime,premiumSalesEnabled,liveProviderReady,liveProviderEnabled,liveCheckoutParameters,verifiedLiveStripeSession,purchaseConflict,stripeLiveClient,stripeLiveAccountReady,stripeLiveWebhookConfigured} from '../src/lib/premium-sales.ts';
 import {saspayLiveClient,sasPayOrderDescription,verifiedSasPayResult} from '../src/lib/saspay.ts';
 const env={VERCEL:'1',VERCEL_ENV:'production',PREMIUM_ENVIRONMENT:'live',PREMIUM_SALES_ENABLED:'1',COMMERCE_REVIEWED:'1',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SELLER_NAME:'Fixture',SELLER_LEGAL_STATUS:'EI',SELLER_ADDRESS:'Adresse de test',SELLER_COUNTRY:'FR',SELLER_REGISTRATION:'fixture-registration',COMMERCIAL_TERMS_VERSION:'fixture-v1',SUPPORT_EMAIL:'support@example.com',STRIPE_SECRET_KEY:'sk_live_fixture',STRIPE_WEBHOOK_SECRET_LIVE:'whsec_fixture',STRIPE_LIVE_ENABLED:'1'};
 const id=randomUUID();
@@ -75,4 +75,27 @@ test('un prestataire configuré mais non activé reste inaccessible même si l�
  assert.equal(liveProviderEnabled('stripe',both),false);
  assert.equal(liveProviderEnabled('saspay',both),true);
  assert.equal(premiumSalesEnabled({...both,SASPAY_LIVE_ENABLED:'0'}),false);
+});
+test('vérifie destination Live et événements réellement enregistrés chez SasPay',async()=>{
+ const original=globalThis.fetch,policy=process.env.SASPAY_LIVE_FEE_MODE;process.env.SASPAY_LIVE_FEE_MODE='DEDUCTED';
+ const hook=randomUUID(),expected='https://example.com/api/saspay/webhook';let url=expected,environment='LIVE',events=['transaction.success','transaction.failed','transaction.cancelled'];
+ try{
+  globalThis.fetch=async input=>{const path=new URL(input).pathname;
+   return Response.json({data:{next:null,results:path==='/api/v1/merchant-webhooks/'?[{id:hook,url,environment,is_active:true}]:events.map(event_type=>({webhook:hook,event_type}))}});
+  };
+  const client=saspayLiveClient('sk_live_fixture_not_a_real_key');assert.equal(await client.webhookConfigured(expected),true);
+  url='https://old.example/webhooks/saspay';assert.equal(await client.webhookConfigured(expected),false);url=expected;
+  environment='SANDBOX';assert.equal(await client.webhookConfigured(expected),false);environment='LIVE';
+  events=['transaction.failed','transaction.cancelled'];assert.equal(await client.webhookConfigured(expected),false);
+ }finally{globalThis.fetch=original;if(policy===undefined)delete process.env.SASPAY_LIVE_FEE_MODE;else process.env.SASPAY_LIVE_FEE_MODE=policy;}
+});
+
+test('vérifie le webhook Stripe du même compte Live avant activation',async()=>{
+ const url='https://example.com/api/stripe/webhook';
+ const endpoint={url,livemode:true,status:'enabled',enabled_events:['*']};
+ const client={webhookEndpoints:{list:async()=>({data:[endpoint]})}};
+ assert.equal(await stripeLiveWebhookConfigured(client,url),true);
+ endpoint.url='https://old.example/webhook';assert.equal(await stripeLiveWebhookConfigured(client,url),false);endpoint.url=url;
+ endpoint.livemode=false;assert.equal(await stripeLiveWebhookConfigured(client,url),false);endpoint.livemode=true;
+ endpoint.enabled_events=['checkout.session.completed'];assert.equal(await stripeLiveWebhookConfigured(client,url),false);
 });

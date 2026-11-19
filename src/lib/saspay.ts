@@ -90,7 +90,23 @@ function sasPayClient(environment: "test" | "live", key: string) {
     return await request(`/payments/${paymentId}/verify/`) as SasPayPayment;
   }
   async function merchantCheck() { await request("/pricing/my-rates/"); return true; }
-  return { networks, initiate, verify, merchantCheck };
+  async function webhookConfigured(expectedUrl: string) {
+    async function records(path: string) {
+      const rows: Record<string, unknown>[] = [];
+      for (let page = 1; page <= 20; page++) {
+        const data = await request(`${path}?page_size=100&page=${page}`) as { results?: Record<string, unknown>[]; next?: unknown };
+        if (!Array.isArray(data.results)) throw new SasPayError("WEBHOOK_CONFIG");
+        rows.push(...data.results);
+        if (!data.next) return rows;
+      }
+      throw new SasPayError("CATALOGUE_TOO_LARGE");
+    }
+    const hooks = await records("/merchant-webhooks/");
+    const subscriptions = await records("/merchant-webhook-subscriptions/");
+    return hooks.some(hook => hook.url === expectedUrl && hook.is_active === true && hook.environment === (environment === "live" ? "LIVE" : "SANDBOX") &&
+      ["transaction.success", "transaction.failed", "transaction.cancelled"].every(event => subscriptions.some(s => s.webhook === hook.id && s.event_type === event)));
+  }
+  return { networks, initiate, verify, merchantCheck, webhookConfigured };
 }
 
 export function sasPayCustomer(input: unknown) {
