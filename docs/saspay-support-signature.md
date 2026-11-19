@@ -1,6 +1,6 @@
 # Diagnostic signature webhook SasPay sandbox
 
-> Mise à jour du 19 novembre : le diagnostic initial ci-dessous est historique. Une erreur de configuration côté application a été identifiée : un marqueur de substitution cloud est utilisé comme clé HMAC sur les previews existantes. Le succès du test synthétique ne validait donc pas le véritable secret SasPay. Correction du contrôle préparée ; saisir le vrai secret dans Vercel Preview, redéployer et mettre à jour l’URL SasPay avant le prochain renvoi. Ne pas transmettre ce rapport initial comme preuve d’un défaut fournisseur.
+> Mise à jour du 19 novembre : le diagnostic initial ci-dessous est historique. Une erreur de configuration côté application a été identifiée : un marqueur de substitution cloud est utilisé comme clé HMAC sur les previews existantes. Le succès du test synthétique ne validait donc pas le véritable secret SasPay. Correction du contrôle déployée, vrai secret saisi directement dans Vercel Preview et URL stable configurée : notifications externes transaction.created et transaction.success HTTP200 DELIVERED validées le 19 novembre. Ne pas transmettre ce rapport initial comme preuve d’un défaut fournisseur.
 
 Bonjour,
 
@@ -22,3 +22,8 @@ Notre intégration sandbox rencontre un refus de signature sur les notifications
 Merci de vérifier sur les livraisons refusées : présence et format de X-Webhook-Signature et X-Webhook-Timestamp (secondes Unix), signature calculée sur les octets exacts envoyés, et utilisation du signing_secret du webhook sandbox recréé. Pouvez-vous confirmer si la signature suit bien timestamp.corps_brut ?
 
 Nous n’avons pas désactivé la vérification et ne considérons pas le paiement comme une livraison réussie. Aucun secret ni clé API n’est inclus dans ce rapport. L’origine exacte du refus n’est pas encore établie.
+
+
+## Résultat après correction, 19 novembre 2026
+
+Problème résolu en Sandbox côté application, sans modification du calcul HMAC documenté et sans désactivation des contrôles. Paiement diagnostic b19924d6-4b16-45c2-ab20-d9e2dd104b9d, 3000.00 XAF SUCCESS ; livraison transaction.success bdfc9afb-1c52-48a4-b0ec-ef24e5840dd8 HTTP200 DELIVERED. Aucun paiement réel ni abonnement attribué par ce test.
