@@ -192,3 +192,17 @@ Ordre d’application après connexion administrateur Vercel :
 4. Contrôler les livraisons, puis remplacer la valeur principale dans Vercel par la nouvelle et retirer le champ NEXT lors d’un déploiement final. Ne plus conserver inutilement l’ancien secret accepté.
 
 À ce stade : préparation et tests uniquement, aucune valeur Vercel ou configuration Telegram changée. Le réseau bloque encore la connexion officielle Vercel tant que les domaines déjà préparés ne sont pas appliqués.
+
+
+## Copie ponctuelle d’une série vers le Premium
+
+`scripts/copy-telegram-series.mjs ID_TMDB` prépare la liste sans envoi. Il sélectionne uniquement les publications vidéo déjà identifiées pour cette série dans le catalogue du canal source et les ordonne par saison/épisode/message. Les variables serveur existantes TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID, TELEGRAM_PREMIUM_CHANNEL_ID et Redis sont requises ; --poster utilise aussi TMDB_READ_TOKEN.
+
+Avec --apply, le script vérifie les deux canaux et les droits du bot puis appelle copyMessage pour chaque vidéo, en conservant les légendes et les originaux, sans notification sonore. --poster ajoute préalablement l’affiche française TMDB et une légende indiquant le nombre de saisons/épisodes. Aucun automatisme dans le webhook ni transfert d’une autre série.
+
+Le registre durable the-browser:telegram-copy:SOURCE:DESTINATION:MESSAGE contient les identifiants source/copie et permet de sauter les copies déjà confirmées. Une réservation sans expiration précède chaque envoi : après une réponse ambiguë ou un arrêt, rapprocher le message dans le canal avec son identifiant Premium exact avant de reprendre ; un statut seul sans identifiant numérique confirmé ne suffit pas. Aucun retry réseau aveugle. Seuls les rejets429 avec retry_after raisonnable sont réessayés. Ce registre évite les doublons de ce script, mais ne peut pas détecter des copies manuelles antérieures non enregistrées, la Bot API ne permettant pas de relire tout l’historique.
+
+Les médias sont copiés par Telegram, sans téléchargement des vidéos dans le site. Les droits d’accès Premium et la synchronisation du catalogue public ne sont pas modifiés par cet outil.
+
+
+Copie exécutée le19novembre2026 à la demande du propriétaire : Tout le monde déteste Chris (TMDB252),88 épisodes des saisons1–4 vers Streaming Premium (-1003958043288), affiche TMDB en message4. Une interruption sur S04E03 a nécessité une remise en ordre : épisodes3–22 confirmés en messages92–111,19 anciennes copies4–22 retirées après confirmation de leurs remplacements. Audit du registre terminé :88 épisodes uniques,22 par saison et ordre conservé. Sources publiques inchangées.
