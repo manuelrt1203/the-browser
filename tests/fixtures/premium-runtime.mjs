@@ -31,9 +31,11 @@ globalThis.fetch = async (input, options = {}) => {
         amount_total:Number(params.get('line_items[0][price_data][unit_amount]')),currency:params.get('line_items[0][price_data][currency]'),
         livemode:live,payment_status:'paid',status:'complete',payment_intent:`pi_fixture_${order.replaceAll('-','')}`,
         url:`https://checkout.stripe.com/c/pay/${id}` };
+      const state=JSON.parse(await readFile(process.env.PREMIUM_TEST_PAYMENT_STATE,'utf8'));if(state.stripePending){session.status='open';session.payment_status='unpaid';session.payment_intent=null;}
       sessions.set(id,session);
       return Response.json(session);
     }
+    const expire=url.pathname.match(/\/checkout\/sessions\/([^/]+)\/expire$/);if(expire&&sessions.has(expire[1])){const session=sessions.get(expire[1]);if(session.status!=='open')return Response.json({error:{message:'not open'}},{status:400});session.status='expired';return Response.json(session);}
     const id = url.pathname.split('/').at(-1);
     if (sessions.has(id)) return Response.json(sessions.get(id));
     return Response.json({error:{type:'invalid_request_error',message:'Unknown test session'}},{status:404});
@@ -54,10 +56,13 @@ globalThis.fetch = async (input, options = {}) => {
       return Response.json({success:true,data:session});
     }
     if(url.pathname==='/api/v1/checkout-sessions/'){const state=JSON.parse(await readFile(process.env.PREMIUM_TEST_PAYMENT_STATE,'utf8'));if(state.saspayPaid)for(const c of checkouts.values()){c.session.status='PAID';c.session.transaction=c.paymentId;}return Response.json({success:true,data:{next:null,results:[...checkouts.values()].map(c=>c.session)}});}
+    const cancel=url.pathname.match(/\/checkout-sessions\/([^/]+)\/cancel\/$/);
+    if(cancel&&checkouts.has(cancel[1])){const state=JSON.parse(await readFile(process.env.PREMIUM_TEST_PAYMENT_STATE,'utf8'));if(state.cancelFailure)return Response.json({success:false},{status:503});const c=checkouts.get(cancel[1]);if(c.session.status!=='PENDING')return Response.json({success:false},{status:409});c.session.status='CANCELLED';return Response.json({success:true,data:c.session});}
     const checkoutMatch=url.pathname.match(/\/checkout-sessions\/([^/]+)\/(status\/)?$/);
     if(checkoutMatch && checkouts.has(checkoutMatch[1])){
       const {session,paymentId}=checkouts.get(checkoutMatch[1]),state=JSON.parse(await readFile(process.env.PREMIUM_TEST_PAYMENT_STATE,'utf8'));
-      if(state.saspayPaid){session.status='PAID';session.transaction=paymentId;}
+      if(state.saspayPaid&&session.status==='PENDING'){session.status='PAID';session.transaction=paymentId;}
+      if(state.saspayProcessing&&session.status==='PENDING')session.transaction=paymentId;
       return Response.json({success:true,data:checkoutMatch[2]?{id:session.id,status:session.status,transaction_id:session.transaction,transaction_status:state.saspayPaid?'SUCCESS':null}:session});
     }
     if(url.pathname.endsWith('/payments/softpay/')){

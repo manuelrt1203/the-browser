@@ -109,6 +109,10 @@ function sasPayClient(environment: "test" | "live", key: string) {
     if (!sasPayId(id)) throw new SasPayError("SESSION_ID");
     return await request(`/checkout-sessions/${id}/status/`) as SasPayCheckoutStatus;
   }
+  async function cancelCheckout(id: string) {
+    if (!sasPayId(id)) throw new SasPayError("SESSION_ID");
+    return await request(`/checkout-sessions/${id}/cancel/`, {}) as SasPayCheckout;
+  }
   async function findCheckout(orderId: string) {
     if (!sasPayId(orderId)) throw new SasPayError("ORDER_ID");
     return matchingCheckout(s => s.metadata?.order_id === orderId && s.metadata?.environment === environment);
@@ -147,7 +151,7 @@ function sasPayClient(environment: "test" | "live", key: string) {
     return hooks.some(hook => hook.url === expectedUrl && hook.is_active === true && hook.environment === (environment === "live" ? "LIVE" : "SANDBOX") &&
       ["transaction.success", "transaction.failed", "transaction.cancelled"].every(event => subscriptions.some(s => s.webhook === hook.id && s.event_type === event)));
   }
-  return { networks, initiate, verify, createCheckout, checkout, checkoutStatus, findCheckout, checkoutForPayment, merchantCheck, webhookConfigured };
+  return { networks, initiate, verify, createCheckout, checkout, checkoutStatus, cancelCheckout, findCheckout, checkoutForPayment, merchantCheck, webhookConfigured };
 }
 
 export function sasPayCheckoutCustomer(input: unknown) {

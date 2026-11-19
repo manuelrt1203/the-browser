@@ -71,6 +71,34 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   const repaired=await fetch(origin+diagnosticPath,{method:'POST',headers:{authorization:'Bearer fixture_maintenance'}});assert.equal(repaired.status,200);assert.equal((await repaired.json()).recovered,true);
   const recovered=await post('/api/premium/payment',sasPayload,{cookie:third,'idempotency-key':lostId});assert.equal(recovered.status,200,await recovered.clone().text());
   assert.equal((await recovered.json()).status,'pending');assert.equal(JSON.parse(await readFile(paymentState,'utf8')).checkoutCreates,beforeRetry);
+  // Changing provider cancels the real remote session before unblocking a purchase.
+  const cancelPath='/api/premium/payment/cancel',cancelBody={orderId:lostId};
+  assert.equal((await post(cancelPath,cancelBody)).status,401);
+  assert.equal((await post(cancelPath,cancelBody,{cookie:other})).status,404);
+  assert.equal((await post(cancelPath,cancelBody,{cookie:third,origin:'https://attacker.example'})).status,403);
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayProcessing:true}));
+  assert.equal((await post(cancelPath,cancelBody,{cookie:third})).status,409,'transaction Mobile Money en cours : ne pas libérer le choix');
+  // Use a fresh session without any transaction for the successful cancellation.
+  const fourth=await login(45678),changeId=randomUUID();
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayProcessing:false,stripePending:true}));
+  assert.equal((await post('/api/premium/payment',sasPayload,{cookie:fourth,'idempotency-key':changeId})).status,200);
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),cancelFailure:true}));
+  assert.equal((await post(cancelPath,{orderId:changeId},{cookie:fourth})).status,503,'panne prestataire : conserver la commande');
+  assert.equal((await post('/api/premium/payment',payload,{cookie:fourth,'idempotency-key':randomUUID()})).status,409,'pas de nouveau paiement après annulation incertaine');
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),cancelFailure:false}));
+  const changeResponse=await post(cancelPath,{orderId:changeId},{cookie:fourth});assert.equal(changeResponse.status,200,await changeResponse.clone().text());
+  assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${changeId}`])).status,'cancelled');
+  assert.equal((await post(cancelPath,{orderId:changeId},{cookie:fourth})).status,200,'annulation idempotente');
+  const replacementId=randomUUID(),replacement=await post('/api/premium/payment',payload,{cookie:fourth,'idempotency-key':replacementId});assert.equal(replacement.status,200,await replacement.clone().text());assert.equal((await replacement.json()).status,'pending');
+  assert.equal((await post(cancelPath,{orderId:replacementId},{cookie:fourth})).status,200,'Stripe ouvert expiré chez le prestataire');
+  assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${replacementId}`])).status,'cancelled');
+  assert.equal((await post(cancelPath,{orderId:id},{cookie})).status,409,'ne pas annuler une commande payée');
+  assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${id}`])).status,'confirmed');
+  const fifth=await login(56789),paidMeanwhile=randomUUID();
+  assert.equal((await post('/api/premium/payment',sasPayload,{cookie:fifth,'idempotency-key':paidMeanwhile})).status,200);
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:true}));
+  assert.equal((await post(cancelPath,{orderId:paidMeanwhile},{cookie:fifth})).status,409,'confirmation prestataire survenue avant annulation');
+  assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${paidMeanwhile}`])).status,'confirmed');
   assert.equal(await command(['SCARD','the-browser:{premium:live}:channel-access:users']),0,'aucune mutation Telegram dans ce test');
  }finally{for(const child of [app,redis])if(child&&child.exitCode===null){child.kill('SIGTERM');await once(child,'exit');}await rm(directory,{recursive:true,force:true});}
 });

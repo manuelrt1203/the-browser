@@ -10,6 +10,12 @@ Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriét
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Source code de paiement vérifiée : 153 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
+## Changement de moyen de paiement — 19 novembre 2026
+
+Demande du propriétaire : abandonner le choix SasPay et passer à Stripe. Bouton « Changer de moyen de paiement » ajouté sur /premium, y compris pour une commande en attente retrouvée après connexion ; lien Mon abonnement adapté. Annulation authentifiée/propriétaire/même origine sous verrou d’achat, fermeture du checkout chez SasPay ou expiration Stripe, statut final relu avant libération du choix. Commande payée/en traitement ou état ambigu : conserver/blocage. Historique conservé, nouvelle tentative/nouveau consentement, aucun effacement de paiement confirmé. Voir docs/live-payments.md pour limites des anciens softpay et créations Stripe non liées.
+
+Validation : 153 tests et intégration HTTP Redis isolé réussis avec changement SasPay→Stripe, doublon, panne, paiement en cours/confirmé et contrôles d’accès ; lint ciblé/TypeScript et build réussis. Livraison en cours ; aucune annulation de la vraie commande du propriétaire ni débit déclenchés par l’agent.
+
 ## Correction de redirection SasPay Live — 19 novembre 2026
 
 Erreur utilisateur « Paiement indisponible » reproduite côté données : session SasPay existante PENDING, montant3000.00 XAF et métadonnées correctes, mais sans liaison Redis. Diagnostic privé : REDIRECT_UNSUPPORTED, car la vraie API Live renvoie checkout.saspay.me alors que la liste autorisait uniquement pay.saspay.me. Validation centralisée des URL Live pour ces deux hôtes exacts HTTPS, sans identifiants/port, et Sandbox toujours limité à sandbox-checkout.saspay.me. Aucun relâchement aux sous-domaines arbitraires.

@@ -68,3 +68,12 @@ Une tentative réelle a créé une session mais a été rejetée localement : l�
 Maintenance protégée : GET `/api/premium/payment/readiness?order=UUID` relit uniquement la session marchande et retourne des valeurs non sensibles (présence, liaison, prix, devise, hôte, résultat de validation) ; POST sur la même URL rapproche uniquement une session existante puis vérifie son statut. Aucune création ni donnée client fournie à la récupération. Sans authentification de maintenance :401. Aucun lien complet/secret prestataire exposé. Le client reprend ensuite sa commande via sa session Telegram habituelle.
 
 Correctif96fc0e6 déployé : dpl_iYcnCGTeNtxHWnxLAKBKnkLJ1WFR Ready. Récupération de la session réelle existante vérifiée HTTP200 ; référence3000 XAF, liaison et validation réussies, statut PENDING. Aucun nouveau checkout ni débit déclenché. 153 tests et intégration isolée réussis.
+
+
+## Changer de moyen de paiement — 19 novembre 2026
+
+Bouton « Changer de moyen de paiement » sur /premium pour la tentative en cours ; une commande pending du compte est retrouvée après connexion, et Mon abonnement renvoie vers cette gestion. La demande POST /api/premium/payment/cancel exige session Telegram propriétaire, même origine, UUID et verrou d’achat par compte. Aucune suppression d’historique ni modification d’une commande payée.
+
+SasPay : session hébergée existante vérifiée puis annulée par POST /checkout-sessions/{id}/cancel/, statut terminal relu avant annulation locale. Toute transaction déjà liée bloque le changement pour éviter un encaissement tardif ; paiement PAID rapproché et conservé. Ancien softpay et session ambiguë non retrouvée restent bloqués. Stripe : session ouverte non payée expirée par l’API puis relue ; session complète/en traitement ou payée ne peut pas être remplacée. Une création Stripe ambiguë sans session liée doit d’abord être rapprochée. Aucun repli consistant à effacer simplement Redis.
+
+Après annulation réussie : choix à nouveau disponible, ancien UUID terminé et nouveau UUID au prochain achat, consentement à nouveau demandé. Une panne de vérification/annulation conserve la commande et bloque le nouvel achat. Annulation répétée idempotente. Vérification HTTP isolée : propriétaires/origines, changement SasPay→Stripe, expiration Stripe, panne prestataire, transaction en cours, paiement confirmé avant annulation. Aucune annulation réelle ni débit automatique réalisé pour tester cette fonctionnalité.
