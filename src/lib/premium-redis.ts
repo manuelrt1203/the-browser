@@ -1,6 +1,6 @@
 import { sasPayCheckoutUrl } from "./saspay-checkout-url.ts";
-import { createPremiumOrder, confirmPremiumPayment, hasPremiumAccess } from "./subscription.ts";
-import type { PaymentProvider, PremiumOrder } from "./subscription.ts";
+import { createPremiumOrder, confirmPremiumPayment, hasPremiumAccess, orderOffer } from "./subscription.ts";
+import type { PaymentProvider, PremiumOrder, PremiumPlan } from "./subscription.ts";
 
 export type StoredPremiumOrder = PremiumOrder & {
   telegramUserId: string;
@@ -102,8 +102,7 @@ export function premiumRedis(environment: "test" | "live") {
       const value = JSON.parse(raw) as StoredPremiumOrder;
       if (value.id !== id || value.environment !== environment || !validTelegramId(value.telegramUserId) ||
           !["stripe", "saspay"].includes(value.provider) || !["pending", "confirmed", "failed", "cancelled"].includes(value.status)) throw new Error();
-      const expected = createPremiumOrder(id, value.provider);
-      if (value.currency !== expected.currency || value.amountMinor !== expected.amountMinor) throw new Error();
+      orderOffer(value);
       if (value.providerSessionId !== undefined) providerIdentifier(value.providerSessionId);
       if (value.providerFlow !== undefined && (value.providerFlow !== "checkout" || value.provider !== "saspay" || !value.providerSessionId)) throw new Error();
       if (value.providerCheckoutUrl !== undefined) {
@@ -134,12 +133,12 @@ export function premiumRedis(environment: "test" | "live") {
   }
 
   /** telegramUserId MUST come from a verified login, not a client-supplied ID. */
-  async function createOrder(id: string, telegramUserId: string, provider: PaymentProvider) {
+  async function createOrder(id: string, telegramUserId: string, provider: PaymentProvider, plan: PremiumPlan = "monthly") {
     if (!validTelegramId(telegramUserId) || !["stripe", "saspay"].includes(provider)) throw new PremiumStorageError("IDENTITY");
-    const order: StoredPremiumOrder = { ...createPremiumOrder(id, provider), environment, telegramUserId };
+    const order: StoredPremiumOrder = { ...createPremiumOrder(id, provider, plan), environment, telegramUserId };
     const result = await command(["EVAL", CREATE, 2, orderKey(id), `${prefix}:user:${telegramUserId}:orders`, JSON.stringify(order), id]);
     const saved = decode(result, id);
-    if (saved.telegramUserId !== telegramUserId || saved.provider !== provider) throw new PremiumStorageError("ORDER_CONFLICT");
+    if (saved.telegramUserId !== telegramUserId || saved.provider !== provider || (saved.plan ?? "monthly") !== plan) throw new PremiumStorageError("ORDER_CONFLICT");
     return saved;
   }
 

@@ -1,6 +1,6 @@
 # Mémoire du projet — The Browser
 
-Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+Mise à jour : 22 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
 ## État actuel — paiements ouverts le 19 novembre 2026
 
@@ -9,6 +9,14 @@ Mise à jour : 19 novembre 2026. Ce document décrit les décisions du propriét
 - Les essais Sandbox/Stripe test sont distincts et fermés sur le domaine Production. SasPay Sandbox paiement→webhook→commande Redis testé, signature rétablie. Aucun paiement/débit Live de test n’a été déclenché par l’agent ; premier règlement humain et attribution Live complète restent à observer.
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Code applicatif vérifié : 155 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
+
+## Nouvelles formules et tarifs — 22 novembre 2026
+
+Demande : proposer mois/trimestre/année et baisser le tarif XAF mensuel à1500, EUR mensuel inchangé. Le propriétaire choisit explicitement les remises : **mensuel1500 XAF/4,57 EUR ; trimestriel4000 XAF/13 EUR ; annuel15000 XAF/50 EUR**. Le EUR correspond à Stripe, le XAF au prix source SasPay (convertible sur son checkout). Paiement de toute la période, renouvellement manuel conservé, aucun Billing récurrent.
+
+Implémentation : choix de formule, prix/remises et durée sur /premium, ordre immuable plan+priceVersion2026-11-22, montant imposé côté serveur pour chaque prestataire, échéance1/3/12 mois calendaires calculée directement avec fin de mois et année bissextile. Consentement aux conditions suffixé par la nouvelle version. Historiques/statuts présentent la formule et le prix effectif. Anciennes commandes sans plan/version conservées au tarif mensuel3000 XAF/457 centimes EUR ; aucun prix/date/droit recalculé. Annulation prestataire préalable requise pour changer une tentative.
+
+Validation locale :159 tests, parcours HTTP Live simulé des six tarifs/durées avec Redis isolé et refus de prix/plan falsifiés, compatibilité réelle de lecture des2 commandes Live historiques (sans écriture), parcours test et scripts Lua Redis réussis. Vraie session Sandbox annuelle15000.00 XAF créée, vérifiée puis annulée sans débit. Chromium avec prestataires simulés : choix3formules, prix corrects, contrôle320/390px sans débordement, ancienne commande3000 conservée et annulation/reprise avec nouveau consentement. Lint ciblé/TypeScript/build réussis. Déploiement en cours ; aucun paiement Live déclenché par l’agent.
 
 ## Sources externes et coût des API — 19 novembre 2026
 

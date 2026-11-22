@@ -1,6 +1,6 @@
 # Paiements — décisions et mise en place
 
-Statut au 16 novembre 2026 : **SasPay et Stripe retenus ; compte SasPay en attente de validation**, selon la confirmation du propriétaire. Tarif fixé le 15 novembre 2026 : **3 000 XAF par mois, ou son équivalent arrondi de 4,57 EUR**. Le renouvellement est manuel, sans prélèvement automatique ; la prise en charge des frais de paiement reste à définir. Les pilotes Stripe et SasPay sont implémentés en mode test ; aucun encaissement réel activé.
+Statut au 22 novembre 2026 : paiements Live Stripe et SasPay ouverts. Nouvelles formules confirmées : **1 mois à 1 500 XAF ou 4,57 EUR ; 3 mois à 4 000 XAF ou 13 EUR ; 12 mois à 15 000 XAF ou 50 EUR**. Montants en EUR pour Stripe et prix source XAF pour SasPay, qui peut convertir sur son checkout. Renouvellement manuel, paiement de toute la période à la commande. Les commandes antérieures conservent leur prix/durée. Les sections datées ci-dessous décrivent aussi l’historique ; voir docs/live-payments.md pour l’exploitation actuelle.
 
 ## Première étape implémentée — 15 novembre 2026
 
@@ -218,3 +218,10 @@ Stripe carte4,57EUR et SasPay Mobile Money Congo3000XAF activés en Production a
 ## Élargissement SasPay multipays — 19 novembre 2026
 
 Le paiement Live utilise désormais le checkout hébergé SasPay, sans restriction CG ni téléphone +242 dans le formulaire. Prix source3000.00 XAF et conversion/options proposées sur la page SasPay, sous réserve de sa couverture active. Nom/e-mail seulement collectés sur le site ; Stripe carte4,57EUR conservé. La documentation confirme un pays facultatif pour présélection, sans garantie explicite de géolocalisation automatique. Confirmation du prix source et de la transaction liée via les API marchandes, verify SUCCESS obligatoire, aucun droit depuis le retour navigateur. Voir [live-payments.md](live-payments.md#checkout-saspay-multipays--19-novembre-2026) pour preuves et limites ; les paragraphes historiques décrivant uniquement le Congo ne décrivent plus le nouveau formulaire Live.
+
+
+## Formules mensuelle, trimestrielle et annuelle — 22 novembre 2026
+
+Remises explicitement choisies par le propriétaire : trimestre4000 XAF/13 EUR, année15000 XAF/50 EUR ; mois1500 XAF et4,57 EUR inchangés en euros. Chaque nouvelle commande porte plan monthly/quarterly/annual et priceVersion2026-11-22. Le serveur impose le prix de cette formule ; un montant ou une durée reçus du navigateur ne font pas autorité. Confirmation prestataire et échéance1/3/12 mois calendaires, avec repli au dernier jour du mois cible. Pas de90/365 jours fixes ni d’ajouts mensuels successifs qui déplacent le jour.
+
+Anciennes commandes sans formule/version validées selon l’ancien tarif mensuel3000 XAF/457 centimes EUR. Aucun recalcul d’un paiement en attente/confirmé ni modification de ses dates. Conditions suffixées par la version du tarif pour tout nouveau consentement. Paiement ponctuel et renouvellement manuel conservés ; autre commande pending ou abonnement actif bloque une nouvelle période. Changer de durée nécessite d’abord l’annulation sûre de la tentative en cours.

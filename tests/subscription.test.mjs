@@ -7,7 +7,7 @@ function payment(order, overrides = {}) {
     currency: order.currency, paidAt: '2026-11-10T14:30:00.000Z', ...overrides };
 }
 
-test('offres : 3000 francs XAF et 457 centimes EUR, sans conversion flottante au paiement', () => {
+test('offres historiques : 3000 francs XAF et 457 centimes EUR, sans conversion flottante au paiement', () => {
   assert.equal(PREMIUM_OFFERS.saspay.amountMinor, 3000);
   assert.equal(PREMIUM_OFFERS.stripe.amountMinor, 457);
   assert.equal(createPremiumOrder('o', 'stripe').currency, 'EUR');

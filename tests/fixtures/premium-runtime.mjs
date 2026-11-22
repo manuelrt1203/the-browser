@@ -49,7 +49,7 @@ globalThis.fetch = async (input, options = {}) => {
     if(url.pathname.endsWith('/networks/'))return Response.json({success:true,data:{next:null,results:[{country:sasPayCountry,name:'MTN',code:'fixture_mtn_cg',is_active:true},{country:sasPayCountry,name:'Airtel',code:'fixture_airtel_cg',is_active:true}]}});
     if(url.pathname==='/api/v1/checkout-sessions/' && options.method==='POST'){
       const body=JSON.parse(options.body),id=randomUUID(),paymentId=randomUUID();
-      if(body.country || body.network || body.customer_phone || body.amount!=='3000.00' || body.currency!=='XAF')throw new Error('Hosted contract');
+      if(body.country || body.network || body.customer_phone || !['1500.00','4000.00','15000.00','3000.00'].includes(body.amount) || body.currency!=='XAF')throw new Error('Hosted contract');
       const session={...body,id,status:'PENDING',transaction:null,checkout_url:`https://${live?'checkout':'sandbox-checkout'}.saspay.me/checkout/${id}`};
       checkouts.set(id,{session,paymentId});
       // The checkout may settle in another currency. Source amount stays on the session.

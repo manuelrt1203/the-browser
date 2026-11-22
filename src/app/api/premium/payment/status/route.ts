@@ -16,6 +16,6 @@ export async function GET(request: Request) {
       const session = await stripeLiveClient().checkout.sessions.retrieve(updated.providerSessionId);
       if (session.url) { const u = new URL(session.url); if (u.protocol !== "https:" || u.hostname !== "checkout.stripe.com" || u.username || u.password || u.port) throw new Error(); checkoutUrl = u.toString(); }
     }
-    return Response.json({ orderId: id, provider: updated.provider, needsRetry: updated.status === "pending" && !updated.providerSessionId, status: updated.status, expiresAt: updated.expiresAt ?? null, checkoutUrl: updated.status === "pending" ? checkoutUrl : null }, { headers: { "Cache-Control": "private, no-store" } });
+    return Response.json({ orderId: id, provider: updated.provider, plan: updated.plan ?? "monthly", amountMinor: updated.amountMinor, currency: updated.currency, needsRetry: updated.status === "pending" && !updated.providerSessionId, status: updated.status, expiresAt: updated.expiresAt ?? null, checkoutUrl: updated.status === "pending" ? checkoutUrl : null }, { headers: { "Cache-Control": "private, no-store" } });
   } catch { return Response.json({ error: "Confirmation momentanément indisponible" }, { status: 503 }); }
 }

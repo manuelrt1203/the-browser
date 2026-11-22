@@ -33,7 +33,7 @@ export function PremiumDemo() {
       <form onSubmit={simulate} className="mt-5 flex flex-col gap-4">
         <label className="flex flex-col gap-2">Moyen de paiement
           <select className="rounded-lg bg-slate-900 p-3" value={provider} onChange={e => { setProvider(e.target.value); setResult(null); }}>
-            <option value="saspay">SasPay — 3 000 FCFA</option>
+            <option value="saspay">SasPay — 1 500 FCFA</option>
             <option value="stripe">Stripe — 4,57 €</option>
           </select>
         </label>

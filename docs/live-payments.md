@@ -20,7 +20,7 @@ Ne jamais copier un marqueur cloud pour une clé HMAC. Ces secrets sont différe
 
 ## Parcours
 
-La page `/premium` affiche seulement les prestataires configurés. Stripe : Checkout hébergé, achat ponctuel 457 centimes EUR, sans Billing récurrent, prix serveur. SasPay : checkout hébergé multipays, montant source décimal 3000.00 XAF ; pays, réseau et numéro ne sont plus imposés par le site. Le client choisit parmi les options actives de SasPay, qui gère aussi les OTP. Les options et le montant final dans la devise proposée sont affichés chez SasPay avant validation. `fee_charge_mode=DEDUCTED` est envoyé ; son respect dépend de la configuration marchand `ALLOW_CLIENT_OVERRIDE`, comme le précise la documentation. Ne pas promettre une couverture universelle ni un taux de conversion inventé.
+La page `/premium` affiche seulement les prestataires configurés. Stripe : Checkout hébergé, achat ponctuel457/1300/5000 centimes EUR selon1/3/12 mois, sans Billing récurrent, prix serveur. SasPay : checkout hébergé multipays, montant source décimal1500.00/4000.00/15000.00 XAF selon1/3/12 mois ; pays, réseau et numéro ne sont plus imposés par le site. Le client choisit parmi les options actives de SasPay, qui gère aussi les OTP. Les options et le montant final dans la devise proposée sont affichés chez SasPay avant validation. `fee_charge_mode=DEDUCTED` est envoyé ; son respect dépend de la configuration marchand `ALLOW_CLIENT_OVERRIDE`, comme le précise la documentation. Ne pas promettre une couverture universelle ni un taux de conversion inventé.
 
 `POST /api/premium/payment` exige origine identique, session Telegram confirmée, UUID de tentative, consentement aux conditions courantes et prix imposé côté serveur. Un verrou par compte sérialise les créations. Une autre commande pending ou une période active bloque une nouvelle commande : pas de renouvellement anticipé/cumul non défini. Conserver le même UUID après erreur réseau. Une tentative terminée utilise un nouvel UUID.
 
@@ -79,3 +79,20 @@ SasPay : session hébergée existante vérifiée puis annulée par POST /checkou
 Après annulation réussie : choix à nouveau disponible, ancien UUID terminé et nouveau UUID au prochain achat, consentement à nouveau demandé. Une panne de vérification/annulation conserve la commande et bloque le nouvel achat. Annulation répétée idempotente. Vérification HTTP isolée : propriétaires/origines, changement SasPay→Stripe, expiration Stripe, panne prestataire, transaction en cours, paiement confirmé avant annulation. Aucune annulation réelle ni débit automatique réalisé pour tester cette fonctionnalité.
 
 Livraison du changement de moyen :8817033 sur main, Production dpl_4M3FSnNSHHUyLaM7LM1HCEWGocF4 Ready. Interface mobile vérifiée avec compte simulé et assets publics ; annulation anonyme401 et contrôles privés des prestataires réussis. Aucun règlement ni annulation Live exécuté par l’agent.
+
+
+## Prix et durées versionnés — 22 novembre 2026
+
+| Formule | SasPay, source XAF | Stripe, EUR | Durée |
+|---|---:|---:|---:|
+| Mensuelle |1500|4,57|1 mois|
+| Trimestrielle |4000|13|3 mois|
+| Annuelle |15000|50|12 mois|
+
+Ces tarifs ne sont pas présentés comme des équivalents de change. SasPay peut convertir sa référence XAF dans la devise du pays choisi ; Stripe facture le tarif EUR fixé. Aucun prélèvement récurrent ajouté.
+
+Nouvel achat : plan obligatoire dans le modèle (monthly/quarterly/annual, monthly par défaut de l’API) et priceVersion2026-11-22. premiumOffer donne le nouveau tarif ; orderOffer vérifie celui de la commande. PREMIUM_OFFERS et createPremiumOrder sans plan restent les définitions historiques pour lire/valider les commandes anciennes. Le stockage de nouvelles commandes sélectionne explicitement monthly par défaut. Ne pas supprimer ces anciens tarifs lors d’un changement de prix.
+
+Les sessions Stripe et SasPay utilisent le montant immuable stocké dans la commande ; leurs réponses sont rapprochées avec ce montant, la devise source et les identifiants prestataire. Le plan n’est pas changé sur un UUID de tentative existant. L’échéance part du paiement confirmé et ajoute directement1/3/12 mois calendaires en UTC, avec repli au dernier jour du mois cible. Une notification répétée n’allonge pas la période. Conditions : COMMERCIAL_TERMS_VERSION suffixé par |2026-11-22, consentement et formule enregistrés côté serveur. Les anciens consentements restent inchangés pour les commandes existantes.
+
+Compte et statuts exposent seulement la formule, le prix effectif et les dates, sans identifiants privés prestataire. Les pilotes classiques de test restent mensuels ; le nouveau tarif SasPay1500 XAF leur est appliqué pour les nouvelles commandes. Les tests isolés couvrent les trois formules chez chaque prestataire, tentative frauduleuse de prix, changement de plan interdit, anciens consentements et anciennes commandes3000 XAF.

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       !["pending", "confirmed", "failed", "cancelled"].includes(body.outcome)) {
     return Response.json({ error: "Scénario invalide" }, { status: 400 });
   }
-  let order = createPremiumOrder(randomUUID(), body.provider);
+  let order = createPremiumOrder(randomUUID(), body.provider, "monthly");
   const now = new Date();
   if (body.outcome === "confirmed") {
     order = confirmPremiumPayment(order, {

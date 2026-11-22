@@ -84,7 +84,7 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
     const sasOrder=randomUUID();const customer={firstName:'Test',lastName:'Client',email:'client@example.com',phone:'+242061234567',network:'fixture_mtn_cg',amount:1,telegramUserId:'54321'};
     const sasResponse=await post('/api/saspay/test/payment',customer,{cookie,'idempotency-key':sasOrder});assert.equal(sasResponse.status,200);const sas=await sasResponse.json();assert.equal(sas.status,'pending');
     const sasReplay=await post('/api/saspay/test/payment',customer,{cookie,'idempotency-key':sasOrder}).then(r=>r.json());assert.equal(sasReplay.checkoutUrl,sas.checkoutUrl);
-    const storedSas=JSON.parse(await command(['GET',`the-browser:{premium:test}:order:${sasOrder}`]));assert.equal(storedSas.amountMinor,3000);assert.equal(storedSas.telegramUserId,'12345');
+    const storedSas=JSON.parse(await command(['GET',`the-browser:{premium:test}:order:${sasOrder}`]));assert.equal(storedSas.amountMinor,1500);assert.equal(storedSas.telegramUserId,'12345');
     assert.equal((await fetch(origin+`/api/saspay/test/status?order=${sasOrder}`,{headers:{cookie:otherCookie}})).status,404);
     const sasBody=JSON.stringify({event:'transaction.success',data:{id:storedSas.providerSessionId,status:'SUCCESS'}});const timestamp=String(Math.floor(Date.now()/1000));
     const sasSignature=createHmac('sha256','saspay_local_fixture_secret').update(`${timestamp}.${sasBody}`).digest('hex');

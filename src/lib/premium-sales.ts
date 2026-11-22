@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { randomUUID } from "node:crypto";
 import { premiumRedis, premiumRedisCommand } from "./premium-redis.ts";
 import type { StoredPremiumOrder } from "./premium-redis.ts";
-import { PREMIUM_OFFERS, hasPremiumAccess } from "./subscription.ts";
+import { PREMIUM_OFFERS, hasPremiumAccess, orderOffer, type PremiumOrder } from "./subscription.ts";
 import { saspayLiveClient, sasPayOrderDescription, verifiedSasPayResult, sasPayWebhookSecretConfigured, verifiedSasPayCheckout, verifiedSasPayCheckoutResult } from "./saspay.ts";
 
 export function livePaymentRuntime(env = process.env) {
@@ -42,20 +42,23 @@ export async function stripeLiveWebhookConfigured(client: Stripe, expectedUrl: s
   return endpoints.data.some(endpoint => endpoint.livemode && endpoint.status === "enabled" && endpoint.url === expectedUrl &&
     (endpoint.enabled_events.includes("*") || events.every(event => endpoint.enabled_events.includes(event))));
 }
-export function liveCheckoutParameters(orderId: string, origin: string): Stripe.Checkout.SessionCreateParams {
+export function liveCheckoutParameters(orderId: string, origin: string, order?: PremiumOrder): Stripe.Checkout.SessionCreateParams {
+  const offer = order ? orderOffer(order) : {...PREMIUM_OFFERS.stripe, months: 1};
+  if (order && (order.id !== orderId || order.provider !== "stripe")) throw new Error("Commande incompatible");
   const url = new URL(origin);
   if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) throw new Error("Origine invalide");
   return { mode: "payment", client_reference_id: orderId,
-    line_items: [{ price_data: { currency: "eur", unit_amount: PREMIUM_OFFERS.stripe.amountMinor, product_data: { name: "The Browser Premium — un mois" } }, quantity: 1 }],
+    line_items: [{ price_data: { currency: "eur", unit_amount: offer.amountMinor, product_data: { name: `The Browser Premium — ${offer.months} mois` } }, quantity: 1 }],
     adaptive_pricing: { enabled: false },
     success_url: `${url.origin}/premium?order=${encodeURIComponent(orderId)}`,
     cancel_url: `${url.origin}/premium?order=${encodeURIComponent(orderId)}&cancelled=1`,
   };
 }
 export function verifiedLiveStripeSession(order: StoredPremiumOrder, session: Stripe.Checkout.Session) {
+  const offer = orderOffer(order);
   if (order.environment !== "live" || order.provider !== "stripe" || !session.livemode ||
       !session.id.startsWith("cs_live_") || order.providerSessionId !== session.id || session.client_reference_id !== order.id ||
-      session.mode !== "payment" || session.currency !== "eur" || session.amount_total !== 457 || order.currency !== "EUR" || order.amountMinor !== 457) throw new Error("Session incompatible");
+      session.mode !== "payment" || session.currency !== "eur" || session.amount_total !== offer.amountMinor || order.currency !== "EUR") throw new Error("Session incompatible");
   if (session.status === "complete" && session.payment_status === "paid") {
     if (typeof session.payment_intent !== "string" || !session.payment_intent.startsWith("pi_")) throw new Error("Paiement incomplet");
     return session.payment_intent;
@@ -83,7 +86,7 @@ export async function refreshLivePayment(order: StoredPremiumOrder, paidAt = new
   } else {
     const session = await stripeLiveClient().checkout.sessions.retrieve(order.providerSessionId);
     const payment = verifiedLiveStripeSession(order, session);
-    if (payment) return store.confirmPayment({ orderId: order.id, provider: "stripe", sessionId: session.id, paymentId: payment, amountMinor: 457, currency: "EUR", paidAt });
+    if (payment) return store.confirmPayment({ orderId: order.id, provider: "stripe", sessionId: session.id, paymentId: payment, amountMinor: order.amountMinor, currency: "EUR", paidAt });
     if (session.status === "expired") return store.markUnpaid(order.id, session.id, "cancelled");
   }
   return order;
@@ -126,7 +129,7 @@ export async function ensureLiveSasPayCheckout(order: StoredPremiumOrder, custom
   const marker = `the-browser:{premium:live}:saspay-checkout:${order.id}`;
   const client = saspayLiveClient();
   const creating = customer && origin && await premiumRedisCommand(["SET", marker, "started", "NX"]) === "OK";
-  const session = creating ? await client.createCheckout(order.id, customer, origin!) : await client.findCheckout(order.id);
+  const session = creating ? await client.createCheckout(order.id, customer, origin!, order) : await client.findCheckout(order.id);
   if (!session) throw new Error("Session en cours de rapprochement ; ne pas recréer");
   const verified = verifiedSasPayCheckout(order, session);
   return premiumRedis("live").bindSession(order.id, verified.id, verified.checkoutUrl, "checkout");

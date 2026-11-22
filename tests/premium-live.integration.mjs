@@ -9,6 +9,7 @@ import {join,resolve} from 'node:path';
 import {createServer} from 'node:net';
 import {createHmac,randomUUID} from 'node:crypto';
 const execFile=promisify(callback);
+const expiry=(value,months)=>{const d=new Date(value),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d.toISOString();};
 test('HTTP live isolé : consentement, maintien, propriétaires, modes et confirmation sans réseau externe',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'premium-live-')),socket=join(directory,'redis.sock'),paymentState=join(directory,'payments.json');
  await writeFile(paymentState,JSON.stringify({saspayPaid:false}));
@@ -28,7 +29,7 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   const adminHelp=await telegram({message:{chat:{id:23456,type:'private'},from:{id:23456,is_bot:false},text:'/copier'}});assert.equal(adminHelp.status,200);assert.match((await adminHelp.json()).text,/Envoyez/);
   const refusedCopy=await telegram({message:{chat:{id:12345,type:'private'},from:{id:12345,is_bot:false},text:'/copier Avatar'}});assert.equal(refusedCopy.status,200);assert.match((await refusedCopy.json()).text,/réservée/);
   const cookie=await login(12345),other=await login(23456),id=randomUUID();
-  const payload={provider:'stripe',termsVersion:'fixture-v1',acceptedTerms:'on'},headers={cookie,'idempotency-key':id};
+  const payload={provider:'stripe',termsVersion:'fixture-v1|2026-11-22',acceptedTerms:'on'},headers={cookie,'idempotency-key':id};
   assert.equal((await post('/api/premium/payment',payload,{'idempotency-key':id})).status,401);
   assert.equal((await post('/api/premium/payment',{...payload,acceptedTerms:''},headers)).status,400);
   assert.equal((await post('/api/premium/payment',payload,{...headers,origin:'https://attacker.example'})).status,403);
@@ -47,7 +48,7 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   assert.equal((await stripeEvent({...event,livemode:false})).status,400);
   assert.equal((await stripeEvent(event)).status,200);
   assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${id}`])).expiresAt,saved.expiresAt);
-  const sasId=randomUUID(),sasPayload={provider:'saspay',termsVersion:'fixture-v1',acceptedTerms:'on',name:'Test Client',email:'client@example.com'};
+  const sasId=randomUUID(),sasPayload={provider:'saspay',termsVersion:'fixture-v1|2026-11-22',acceptedTerms:'on',name:'Test Client',email:'client@example.com'};
   const sasResponse=await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':sasId});assert.equal(sasResponse.status,200,await sasResponse.clone().text());const sasCreated=await sasResponse.json();assert.equal(sasCreated.status,'pending');assert.equal(new URL(sasCreated.checkoutUrl).hostname,'checkout.saspay.me');
   const repeated=await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':sasId});assert.equal((await repeated.json()).checkoutUrl,sasCreated.checkoutUrl,'même session après double clic');
   assert.equal((await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':randomUUID()})).status,409,'autre paiement en attente');
@@ -57,7 +58,7 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   const sasHeaders={'x-webhook-event':'transaction.success','x-webhook-timestamp':String(timestamp),'x-webhook-signature':signature};
   assert.equal((await fetch(origin+'/api/saspay/webhook',{method:'POST',headers:{...sasHeaders,'x-webhook-signature':'0'.repeat(64)},body})).status,400);
   assert.equal((await fetch(origin+'/api/saspay/webhook',{method:'POST',headers:sasHeaders,body})).status,200);
-  const sasPaid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${sasId}`]));assert.equal(sasPaid.status,'confirmed');assert.equal(sasPaid.amountMinor,3000);assert.notEqual(sasPaid.confirmedPaymentId,sasOrder.providerSessionId);
+  const sasPaid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${sasId}`]));assert.equal(sasPaid.status,'confirmed');assert.equal(sasPaid.amountMinor,1500);assert.notEqual(sasPaid.confirmedPaymentId,sasOrder.providerSessionId);
   const polled=await fetch(origin+`/api/premium/payment/status?order=${sasId}`,{headers:{cookie:other}});assert.equal((await polled.json()).status,'confirmed');
   assert.equal((await fetch(origin+'/api/saspay/webhook',{method:'POST',headers:sasHeaders,body})).status,200);assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${sasId}`])).expiresAt,sasPaid.expiresAt);
   // Ambiguous creation: recover the hosted session instead of creating a duplicate.
@@ -68,7 +69,7 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   const beforeRetry=JSON.parse(await readFile(paymentState,'utf8')).checkoutCreates;
   const diagnosticPath=`/api/premium/payment/readiness?order=${lostId}`;
   assert.equal((await fetch(origin+diagnosticPath,{method:'POST'})).status,401);
-  const diagnostics=await fetch(origin+diagnosticPath,{headers:{authorization:'Bearer fixture_maintenance'}});assert.equal(diagnostics.status,200);assert.deepEqual(await diagnostics.json(),{found:true,bound:false,validation:null,amount:'3000.00',currency:'XAF',status:'PENDING',checkoutHost:'checkout.saspay.me',metadataMatches:true});
+  const diagnostics=await fetch(origin+diagnosticPath,{headers:{authorization:'Bearer fixture_maintenance'}});assert.equal(diagnostics.status,200);assert.deepEqual(await diagnostics.json(),{found:true,bound:false,validation:null,amount:'1500.00',currency:'XAF',status:'PENDING',checkoutHost:'checkout.saspay.me',metadataMatches:true});
   assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${lostId}`])).providerSessionId,undefined,'GET diagnostic ne modifie rien');
   const repaired=await fetch(origin+diagnosticPath,{method:'POST',headers:{authorization:'Bearer fixture_maintenance'}});assert.equal(repaired.status,200);assert.equal((await repaired.json()).recovered,true);
   const recovered=await post('/api/premium/payment',sasPayload,{cookie:third,'idempotency-key':lostId});assert.equal(recovered.status,200,await recovered.clone().text());
@@ -101,6 +102,35 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:true}));
   assert.equal((await post(cancelPath,{orderId:paidMeanwhile},{cookie:fifth})).status,409,'confirmation prestataire survenue avant annulation');
   assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${paidMeanwhile}`])).status,'confirmed');
+  // Both providers bind the selected duration and price on the server.
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:false,stripePending:false,saspayProcessing:false}));
+  for(const [user,plan,amount] of [[67890,'annual',5000],[78901,'quarterly',1300]]){
+   const userCookie=await login(user),planId=randomUUID();
+   assert.equal((await post('/api/premium/payment',{...payload,plan:'weekly'},{cookie:userCookie,'idempotency-key':planId})).status,400);
+   assert.equal((await post('/api/premium/payment',{...payload,termsVersion:'fixture-v1',plan},{cookie:userCookie,'idempotency-key':planId})).status,400,'ancien consentement refusé pour une nouvelle commande');
+   const response=await post('/api/premium/payment',{...payload,plan,amountMinor:1,currency:'XAF'},{cookie:userCookie,'idempotency-key':planId});assert.equal(response.status,200,await response.clone().text());
+   const paid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${planId}`]));assert.equal(paid.amountMinor,amount);assert.equal(paid.plan,plan);assert.equal(paid.expiresAt,expiry(paid.startsAt,plan==='annual'?12:3));
+   assert.equal((await post('/api/premium/payment',{...payload,plan:'monthly'},{cookie:userCookie,'idempotency-key':planId})).status,409,'une tentative ne change pas de durée');
+  }
+  for(const [user,plan,amount] of [[89012,'quarterly',4000],[90123,'annual',15000]]){
+   const userCookie=await login(user),planId=randomUUID();
+   await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:false}));
+   const response=await post('/api/premium/payment',{...sasPayload,plan},{cookie:userCookie,'idempotency-key':planId});assert.equal(response.status,200,await response.clone().text());
+   await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:true}));
+   const status=await fetch(origin+`/api/premium/payment/status?order=${planId}`,{headers:{cookie:userCookie}});assert.equal(status.status,200);const result=await status.json();assert.equal(result.plan,plan);assert.equal(result.amountMinor,amount);
+   const paid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${planId}`]));assert.equal(paid.expiresAt,expiry(paid.startsAt,plan==='annual'?12:3));
+  }
+  // Legacy orders have no plan/version and remain payable at their original price.
+  const legacyId=randomUUID(),legacyUser='91234',legacyCookie=await login(Number(legacyUser));
+  const legacy={id:legacyId,provider:'saspay',environment:'live',telegramUserId:legacyUser,status:'pending',amountMinor:3000,currency:'XAF'};
+  await command(['SET',`the-browser:{premium:live}:order:${legacyId}`,JSON.stringify(legacy)]);await command(['SADD',`the-browser:{premium:live}:user:${legacyUser}:orders`,legacyId]);
+  await command(['SET',`the-browser:{premium:live}:terms:${legacyId}`,JSON.stringify({version:'legacy-terms'})]);
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:false}));
+  const legacyResponse=await post('/api/premium/payment',sasPayload,{cookie:legacyCookie,'idempotency-key':legacyId});assert.equal(legacyResponse.status,200,await legacyResponse.clone().text());assert.equal((await legacyResponse.json()).amountMinor,3000);
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:true}));
+  assert.equal((await fetch(origin+`/api/premium/payment/status?order=${legacyId}`,{headers:{cookie:legacyCookie}})).status,200);
+  const legacyPaid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${legacyId}`]));assert.equal(legacyPaid.amountMinor,3000);assert.equal(legacyPaid.expiresAt,expiry(legacyPaid.startsAt,1));assert.equal(legacyPaid.priceVersion,undefined);
+  assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:terms:${legacyId}`])).version,'legacy-terms');
   assert.equal(await command(['SCARD','the-browser:{premium:live}:channel-access:users']),0,'aucune mutation Telegram dans ce test');
  }finally{for(const child of [app,redis])if(child&&child.exitCode===null){child.kill('SIGTERM');await once(child,'exit');}await rm(directory,{recursive:true,force:true});}
 });

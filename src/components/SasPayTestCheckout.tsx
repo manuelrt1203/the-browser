@@ -52,7 +52,7 @@ export function SasPayTestCheckout() {
   }
   const labels: Record<string, string> = { pending: "En attente de confirmation", confirmed: "Paiement de test confirmé", failed: "Paiement refusé", cancelled: "Paiement annulé" };
   return <section className="mt-8 rounded-2xl border border-violet-400/30 bg-violet-950/30 p-6">
-    <h1 className="text-3xl font-bold">Essayer SasPay — 3 000 FCFA</h1>
+    <h1 className="text-3xl font-bold">Essayer SasPay — 1 500 FCFA</h1>
     <p className="mt-4 text-white/70">MTN et Airtel au Congo-Brazzaville. Tests uniquement, sans argent réel ni accès au canal Premium. Vos coordonnées sont transmises à SasPay pour le paiement.</p>
     <TelegramAccount onChange={setConnected} />
     {!orderId ? <form onSubmit={initiate} className="mt-6 grid gap-4 sm:grid-cols-2">

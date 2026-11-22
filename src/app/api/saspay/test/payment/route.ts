@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     let order = await store.createOrder(id, identity.telegramUserId, "saspay");
     let checkoutUrl = order.providerCheckoutUrl ?? null;
     if (!order.providerSessionId) {
-      const payment = await client.initiate(id, input);
+      const payment = await client.initiate(id, input, order);
       order = await store.bindSession(id, payment.id, payment.checkoutUrl ?? undefined);
       checkoutUrl = payment.checkoutUrl;
     }
