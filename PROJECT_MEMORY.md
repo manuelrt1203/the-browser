@@ -2,13 +2,13 @@
 
 Mise à jour : 22 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
-## État actuel — paiements ouverts le 19 novembre 2026
+## État actuel — 22 novembre 2026
 
-- Production : carte Stripe **4,57 EUR** et checkout SasPay **multipays, référence3000 XAF** proposés sur /premium, renouvellement manuel, authentification Telegram et consentement aux conditions obligatoires.
-- Contrôle privé final : comptes/API et destinations webhook Live vérifiés, Stripe encaissements/virements autorisés, maintenance cron-job.org fraîche. PREMIUM_SALES_ENABLED, STRIPE_LIVE_ENABLED, SASPAY_LIVE_ENABLED à1 en Production. Dernier déploiement vérifié Ready : dpl_HdmWtrqnRWs1wXCxjgTsTRnAo7WW (source992e179).
+- Production : formules **1 mois1500 XAF/4,57 EUR ; 3 mois4000 XAF/13 EUR ; 12 mois15000 XAF/50 EUR** sur /premium. Stripe EUR et SasPay source XAF multipays, renouvellement manuel, authentification Telegram et consentement obligatoires. Anciennes commandes conservées à leur prix/durée.
+- Contrôle privé final : comptes/API et destinations webhook Live vérifiés, Stripe encaissements/virements autorisés, maintenance cron-job.org fraîche. PREMIUM_SALES_ENABLED, STRIPE_LIVE_ENABLED, SASPAY_LIVE_ENABLED à1 en Production. Dernier déploiement vérifié Ready : dpl_Bca5nVygLcddvJUUFJ6h6ABUHZVT (source2e2c929).
 - Les essais Sandbox/Stripe test sont distincts et fermés sur le domaine Production. SasPay Sandbox paiement→webhook→commande Redis testé, signature rétablie. Aucun paiement/débit Live de test n’a été déclenché par l’agent ; premier règlement humain et attribution Live complète restent à observer.
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
-- Code applicatif vérifié : 155 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
+- Code applicatif vérifié : 159 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
 ## Nouvelles formules et tarifs — 22 novembre 2026
 
@@ -16,7 +16,7 @@ Demande : proposer mois/trimestre/année et baisser le tarif XAF mensuel à1500,
 
 Implémentation : choix de formule, prix/remises et durée sur /premium, ordre immuable plan+priceVersion2026-11-22, montant imposé côté serveur pour chaque prestataire, échéance1/3/12 mois calendaires calculée directement avec fin de mois et année bissextile. Consentement aux conditions suffixé par la nouvelle version. Historiques/statuts présentent la formule et le prix effectif. Anciennes commandes sans plan/version conservées au tarif mensuel3000 XAF/457 centimes EUR ; aucun prix/date/droit recalculé. Annulation prestataire préalable requise pour changer une tentative.
 
-Validation locale :159 tests, parcours HTTP Live simulé des six tarifs/durées avec Redis isolé et refus de prix/plan falsifiés, compatibilité réelle de lecture des2 commandes Live historiques (sans écriture), parcours test et scripts Lua Redis réussis. Vraie session Sandbox annuelle15000.00 XAF créée, vérifiée puis annulée sans débit. Chromium avec prestataires simulés : choix3formules, prix corrects, contrôle320/390px sans débordement, ancienne commande3000 conservée et annulation/reprise avec nouveau consentement. Lint ciblé/TypeScript/build réussis. Déploiement en cours ; aucun paiement Live déclenché par l’agent.
+Validation locale :159 tests, parcours HTTP Live simulé des six tarifs/durées avec Redis isolé et refus de prix/plan falsifiés, compatibilité réelle de lecture des2 commandes Live historiques (sans écriture), parcours test et scripts Lua Redis réussis. Vraie session Sandbox annuelle15000.00 XAF créée, vérifiée puis annulée sans débit. Chromium avec prestataires simulés : choix3formules, prix corrects, contrôle320/390px sans débordement, ancienne commande3000 conservée et annulation/reprise avec nouveau consentement. Lint ciblé/TypeScript/build réussis. Livré :2e2c929 sur main et Production dpl_Bca5nVygLcddvJUUFJ6h6ABUHZVT Ready. Vérification des vrais assets publics avec compte simulé dans Chromium :3 formules, six tarifs, prix ancien conservé et changement après annulation ; aucun débordement320/390px. Contrôle privé Live200 (Stripe/SasPay vérifiés, maintenance fraîche), achat anonyme401. Aucun paiement Live déclenché par l’agent.
 
 ## Sources externes et coût des API — 19 novembre 2026
 
