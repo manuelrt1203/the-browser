@@ -3,6 +3,7 @@ import type { StoredPremiumOrder } from "./premium-redis.ts";
 import { sasPayCheckoutUrl } from "./saspay-checkout-url.ts";
 import { paymentTestRuntime } from "./payment-test-runtime.ts";
 import { createPremiumOrder, orderOffer, type PremiumOrder } from "./subscription.ts";
+import { decimalMatches, paymentDecimal } from "./regional-pricing.ts";
 
 export const sasPayOrderDescription = (orderId: string, environment: "test" | "live" = "test") =>
   `The Browser Premium${environment === "test" ? " test" : ""} — commande ${orderId}`;
@@ -68,6 +69,7 @@ function sasPayClient(environment: "test" | "live", key: string) {
     if (!sasPayId(orderId)) throw new SasPayError("ORDER_ID");
     if (order.id !== orderId || order.provider !== "saspay") throw new SasPayError("ORDER_ID");
     const offer = orderOffer(order);
+    if (order.currency !== "XAF" || (order.countryCode && order.countryCode !== "CG")) throw new SasPayError("COUNTRY_UNAVAILABLE");
     const customer = sasPayCustomer(input);
     const available = await networks();
     if (!available.some(n => n.code === customer.network)) throw new SasPayError("NETWORK_UNAVAILABLE");
@@ -99,10 +101,12 @@ function sasPayClient(environment: "test" | "live", key: string) {
     const customer = sasPayCheckoutCustomer(input), url = new URL(origin);
     if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) throw new SasPayError("RETURN_URL");
     return await request("/checkout-sessions/", {
-      amount: `${offer.amountMinor}.00`, currency: "XAF", description: sasPayOrderDescription(orderId, environment),
+      amount: paymentDecimal(offer.amountMinor, order.currency), currency: order.currency, description: sasPayOrderDescription(orderId, environment),
+      ...(order.countryCode ? {country: order.countryCode} : {}),
       customer_name: customer.name, customer_email: customer.email,
       return_url: `${url.origin}/premium?order=${encodeURIComponent(orderId)}`,
-      metadata: { order_id: orderId, environment, ...(order.plan ? {plan: order.plan, months: String(offer.months)} : {}) }, fee_charge_mode: "DEDUCTED",
+      metadata: { order_id: orderId, environment, ...(order.plan ? {plan: order.plan, months: String(offer.months)} : {}),
+        ...(order.countryCode ? {country: order.countryCode, zone: order.zone, price_version: order.priceVersion} : {}) }, fee_charge_mode: "DEDUCTED",
       expires_at: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
     }) as SasPayCheckout;
   }
@@ -140,6 +144,11 @@ function sasPayClient(environment: "test" | "live", key: string) {
     throw new SasPayError("CATALOGUE_TOO_LARGE");
   }
   async function merchantCheck() { await request("/pricing/my-rates/"); return true; }
+  async function payinRates() {
+    const rates = await request("/pricing/my-rates/");
+    if (!Array.isArray(rates)) throw new SasPayError("RATES");
+    return rates as SasPayRate[];
+  }
   async function webhookConfigured(expectedUrl: string) {
     async function records(path: string) {
       const rows: Record<string, unknown>[] = [];
@@ -156,8 +165,10 @@ function sasPayClient(environment: "test" | "live", key: string) {
     return hooks.some(hook => hook.url === expectedUrl && hook.is_active === true && hook.environment === (environment === "live" ? "LIVE" : "SANDBOX") &&
       ["transaction.success", "transaction.failed", "transaction.cancelled"].every(event => subscriptions.some(s => s.webhook === hook.id && s.event_type === event)));
   }
-  return { networks, initiate, verify, createCheckout, checkout, checkoutStatus, cancelCheckout, findCheckout, checkoutForPayment, merchantCheck, webhookConfigured };
+  return { networks, initiate, verify, createCheckout, checkout, checkoutStatus, cancelCheckout, findCheckout, checkoutForPayment, merchantCheck, payinRates, webhookConfigured };
 }
+
+export type SasPayRate = {country_code: string; currency: string; payin?: {available: boolean; tiers?: {min_amount: string | number; max_amount: string | number | null; currency: string}[]}};
 
 export function sasPayCheckoutCustomer(input: unknown) {
   if (!input || typeof input !== "object") throw new SasPayError("CUSTOMER");
@@ -178,8 +189,8 @@ export type SasPayCheckoutStatus = { id: string; status: string; transaction_id:
 export function verifiedSasPayCheckout(order: StoredPremiumOrder, session: SasPayCheckout) {
   const offer = orderOffer(order);
   if (!session || order.provider !== "saspay" || !sasPayId(session.id) ||
-      (order.providerSessionId && order.providerSessionId !== session.id) || order.currency !== "XAF" ||
-      session.currency !== "XAF" || !sasPayAmountMatches(session.amount, offer.amountMinor) ||
+      (order.providerSessionId && order.providerSessionId !== session.id) ||
+      session.currency !== order.currency || !decimalMatches(session.amount, offer.amountMinor, order.currency) ||
       session.metadata?.order_id !== order.id || session.metadata?.environment !== order.environment ||
       session.description !== sasPayOrderDescription(order.id, order.environment)) throw new SasPayError("CHECKOUT_MISMATCH");
   try { return { id: session.id, checkoutUrl: sasPayCheckoutUrl(session.checkout_url, order.environment) }; }
@@ -196,10 +207,10 @@ export function verifiedSasPayCheckoutResult(order: StoredPremiumOrder, session:
         state.transaction_id !== payment.id || session.transaction !== payment.id || payment.status !== "SUCCESS" ||
         payment.transaction_type !== "PAIEMENT" || payment.flow_direction !== "INBOUND" ||
         !/^[A-Z]{3}$/.test(payment.currency) || typeof payment.requested_amount !== "string" ||
-        !/^\d+(?:\.\d{1,2})?$/.test(payment.requested_amount) || !/[1-9]/.test(payment.requested_amount) ||
+        !/^\d+(?:\.\d{1,3})?$/.test(payment.requested_amount) || !/[1-9]/.test(payment.requested_amount) ||
         !Number.isFinite(Date.parse(payment.updated_at))) throw new SasPayError("PAYMENT_MISMATCH");
     return { status: "confirmed" as const, payment: { orderId: order.id, provider: "saspay" as const,
-      sessionId: session.id, paymentId: payment.id, amountMinor: order.amountMinor, currency: "XAF", paidAt: payment.updated_at } };
+      sessionId: session.id, paymentId: payment.id, amountMinor: order.amountMinor, currency: order.currency, paidAt: payment.updated_at } };
   }
   if (state.status === "EXPIRED" || state.status === "CANCELLED") return { status: "cancelled" as const };
   // A failed transaction can be retried on the SAME hosted session.

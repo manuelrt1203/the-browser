@@ -26,7 +26,7 @@ export function liveProviderEnabled(provider: "stripe" | "saspay", env = process
 }
 export function stripeLiveClient(key = process.env.STRIPE_SECRET_KEY ?? "") {
   if (!/^(sk|rk)_live_/.test(key)) throw new Error("Clé Stripe live réelle requise");
-  return new Stripe(key, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 });
+  return new Stripe(key, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2, timeout: 20_000 });
 }
 export async function stripeLiveAccountState(client = stripeLiveClient()) {
   const [balance, account] = await Promise.all([client.balance.retrieve(), client.accounts.retrieve(null)]);
@@ -48,7 +48,8 @@ export function liveCheckoutParameters(orderId: string, origin: string, order?: 
   const url = new URL(origin);
   if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) throw new Error("Origine invalide");
   return { mode: "payment", client_reference_id: orderId,
-    line_items: [{ price_data: { currency: "eur", unit_amount: offer.amountMinor, product_data: { name: `The Browser Premium — ${offer.months} mois` } }, quantity: 1 }],
+    line_items: [{ price_data: { currency: offer.currency.toLowerCase(), unit_amount: offer.amountMinor, product_data: { name: `The Browser Premium — ${offer.months} mois` } }, quantity: 1 }],
+    ...(order?.countryCode ? {allowed_payment_method_types: ["card"] as ["card"], metadata: {country: order.countryCode, zone: order.zone!, price_version: order.priceVersion!}, billing_address_collection: "required" as const} : {}),
     adaptive_pricing: { enabled: false },
     success_url: `${url.origin}/premium?order=${encodeURIComponent(orderId)}`,
     cancel_url: `${url.origin}/premium?order=${encodeURIComponent(orderId)}&cancelled=1`,
@@ -58,7 +59,7 @@ export function verifiedLiveStripeSession(order: StoredPremiumOrder, session: St
   const offer = orderOffer(order);
   if (order.environment !== "live" || order.provider !== "stripe" || !session.livemode ||
       !session.id.startsWith("cs_live_") || order.providerSessionId !== session.id || session.client_reference_id !== order.id ||
-      session.mode !== "payment" || session.currency !== "eur" || session.amount_total !== offer.amountMinor || order.currency !== "EUR") throw new Error("Session incompatible");
+      session.mode !== "payment" || session.currency !== order.currency.toLowerCase() || session.amount_total !== offer.amountMinor) throw new Error("Session incompatible");
   if (session.status === "complete" && session.payment_status === "paid") {
     if (typeof session.payment_intent !== "string" || !session.payment_intent.startsWith("pi_")) throw new Error("Paiement incomplet");
     return session.payment_intent;
@@ -86,7 +87,7 @@ export async function refreshLivePayment(order: StoredPremiumOrder, paidAt = new
   } else {
     const session = await stripeLiveClient().checkout.sessions.retrieve(order.providerSessionId);
     const payment = verifiedLiveStripeSession(order, session);
-    if (payment) return store.confirmPayment({ orderId: order.id, provider: "stripe", sessionId: session.id, paymentId: payment, amountMinor: order.amountMinor, currency: "EUR", paidAt });
+    if (payment) return store.confirmPayment({ orderId: order.id, provider: "stripe", sessionId: session.id, paymentId: payment, amountMinor: order.amountMinor, currency: order.currency, paidAt });
     if (session.status === "expired") return store.markUnpaid(order.id, session.id, "cancelled");
   }
   return order;

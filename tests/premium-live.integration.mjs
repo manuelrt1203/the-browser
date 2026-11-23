@@ -29,7 +29,7 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   const adminHelp=await telegram({message:{chat:{id:23456,type:'private'},from:{id:23456,is_bot:false},text:'/copier'}});assert.equal(adminHelp.status,200);assert.match((await adminHelp.json()).text,/Envoyez/);
   const refusedCopy=await telegram({message:{chat:{id:12345,type:'private'},from:{id:12345,is_bot:false},text:'/copier Avatar'}});assert.equal(refusedCopy.status,200);assert.match((await refusedCopy.json()).text,/réservée/);
   const cookie=await login(12345),other=await login(23456),id=randomUUID();
-  const payload={provider:'stripe',termsVersion:'fixture-v1|2026-11-22',acceptedTerms:'on'},headers={cookie,'idempotency-key':id};
+  const payload={provider:'stripe',countryCode:'FR',termsVersion:'fixture-v1|2026-11-23-regional',acceptedTerms:'on'},headers={cookie,'idempotency-key':id};
   assert.equal((await post('/api/premium/payment',payload,{'idempotency-key':id})).status,401);
   assert.equal((await post('/api/premium/payment',{...payload,acceptedTerms:''},headers)).status,400);
   assert.equal((await post('/api/premium/payment',payload,{...headers,origin:'https://attacker.example'})).status,403);
@@ -48,7 +48,7 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   assert.equal((await stripeEvent({...event,livemode:false})).status,400);
   assert.equal((await stripeEvent(event)).status,200);
   assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${id}`])).expiresAt,saved.expiresAt);
-  const sasId=randomUUID(),sasPayload={provider:'saspay',termsVersion:'fixture-v1|2026-11-22',acceptedTerms:'on',name:'Test Client',email:'client@example.com'};
+  const sasId=randomUUID(),sasPayload={provider:'saspay',countryCode:'CG',termsVersion:'fixture-v1|2026-11-23-regional',acceptedTerms:'on',name:'Test Client',email:'client@example.com'};
   const sasResponse=await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':sasId});assert.equal(sasResponse.status,200,await sasResponse.clone().text());const sasCreated=await sasResponse.json();assert.equal(sasCreated.status,'pending');assert.equal(new URL(sasCreated.checkoutUrl).hostname,'checkout.saspay.me');
   const repeated=await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':sasId});assert.equal((await repeated.json()).checkoutUrl,sasCreated.checkoutUrl,'même session après double clic');
   assert.equal((await post('/api/premium/payment',sasPayload,{cookie:other,'idempotency-key':randomUUID()})).status,409,'autre paiement en attente');
@@ -120,6 +120,26 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
    const status=await fetch(origin+`/api/premium/payment/status?order=${planId}`,{headers:{cookie:userCookie}});assert.equal(status.status,200);const result=await status.json();assert.equal(result.plan,plan);assert.equal(result.amountMinor,amount);
    const paid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${planId}`]));assert.equal(paid.expiresAt,expiry(paid.startsAt,plan==='annual'?12:3));
   }
+  // The same region is charged in its own currency on either provider.
+  await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:false,stripePending:false}));
+  for(const [user,provider,countryCode,currency,amountMinor] of [[92345,'stripe','CG','XAF',1500],[93456,'stripe','CD','CDF',600000],[94567,'saspay','FR','EUR',457],[95678,'saspay','SN','XOF',1500],[96789,'saspay','GN','GNF',25000],[97890,'stripe','MG','MGA',12000]]){
+   const regionalCookie=await login(user),regionalId=randomUUID();
+   const body={...(provider==='stripe'?payload:sasPayload),provider,countryCode,amountMinor:1,currency:'USD',zone:'fake'};
+   const response=await post('/api/premium/payment',body,{cookie:regionalCookie,'idempotency-key':regionalId});assert.equal(response.status,200,await response.clone().text());
+   const saved=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${regionalId}`]));assert.equal(saved.countryCode,countryCode);assert.equal(saved.currency,currency);assert.equal(saved.amountMinor,amountMinor);assert.equal(saved.priceVersion,'2026-11-23-regional');
+   const terms=JSON.parse(await command(['GET',`the-browser:{premium:live}:terms:${regionalId}`]));assert.equal(terms.countryCode,countryCode);assert.equal(terms.amountMinor,amountMinor);
+   assert.equal((await post('/api/premium/payment',{...body,countryCode:countryCode==='CG'?'CM':'CG'},{cookie:regionalCookie,'idempotency-key':regionalId})).status,409,'country cannot change within an existing attempt');
+   if(provider==='saspay'){
+    await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:true}));
+    const status=await fetch(origin+`/api/premium/payment/status?order=${regionalId}`,{headers:{cookie:regionalCookie}});assert.equal(status.status,200,await status.clone().text());const paid=await status.json();assert.equal(paid.status,'confirmed');assert.equal(paid.currency,currency);assert.equal(paid.countryCode,countryCode);
+    await writeFile(paymentState,JSON.stringify({...JSON.parse(await readFile(paymentState,'utf8')),saspayPaid:false}));
+   }
+  }
+  const unsupportedCookie=await login(98901),unsupportedId=randomUUID();
+  for(const countryCode of [undefined,'XX','US','cg'])assert.equal((await post('/api/premium/payment',{...payload,countryCode},{cookie:unsupportedCookie,'idempotency-key':unsupportedId})).status,400);
+  assert.equal((await post('/api/premium/payment',{...payload,countryCode:'TN'},{cookie:unsupportedCookie,'idempotency-key':unsupportedId})).status,422,'no unsupported currency is sent to Stripe');
+  assert.equal(await command(['GET',`the-browser:{premium:live}:order:${unsupportedId}`]),null,'rejected country or method never creates an order');
+  const options=await fetch(origin+'/api/premium/payment/options');assert.equal(options.status,200);const allowed=await options.json();assert.equal(allowed.countries.CG.monthly.saspay,true);assert.equal(allowed.countries.CG.monthly.stripe,true);assert.equal(allowed.countries.TN.monthly.stripe,false);
   // Legacy orders have no plan/version and remain payable at their original price.
   const legacyId=randomUUID(),legacyUser='91234',legacyCookie=await login(Number(legacyUser));
   const legacy={id:legacyId,provider:'saspay',environment:'live',telegramUserId:legacyUser,status:'pending',amountMinor:3000,currency:'XAF'};

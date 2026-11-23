@@ -3,10 +3,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { TelegramAccount } from "./TelegramAccount";
 import { PremiumChannelAccess } from "./PremiumChannelAccess";
+import { formatPremiumAmount } from "@/lib/subscription";
+import { pricingCountry } from "@/lib/regional-pricing";
 import type { SubscriptionAccount as Account } from "@/lib/subscription-account";
 const labels: Record<string, string> = { active: "Actif", expired: "Expiré", pending: "Paiement en attente", inactive: "Aucun abonnement actif", failed: "Paiement refusé", cancelled: "Paiement annulé", upcoming: "À venir" };
 const date = (value: string) => new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" }).format(new Date(value));
-const amount = (value: number, currency: string) => new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(currency === "EUR" ? value / 100 : value);
+const amount = formatPremiumAmount;
 export function SubscriptionAccount() {
   const [connected, setConnected] = useState(false), [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState("");
@@ -52,6 +54,7 @@ export function SubscriptionAccount() {
         {!account.channelAccessAvailable && account.status === "pending" && <p className="mt-4 text-white/70">L’accès sera disponible après confirmation du paiement.</p>}
         {account.orders.length > 0 && <div className="mt-7"><h3 className="font-semibold">Historique</h3><ul className="mt-3 space-y-3">{account.orders.map(order => <li key={order.id} className="rounded-lg border border-white/10 p-4">
           <p>{labels[order.status]} · {amount(order.amountMinor, order.currency)} · {order.months} mois · {order.provider === "stripe" ? "Stripe" : "SasPay"}</p>
+          {order.countryCode && <p className="mt-1 text-sm text-white/60">Pays de facturation : {pricingCountry(order.countryCode)?.name}</p>}
           {order.startsAt && <p className="mt-1 text-sm text-white/60">Du {date(order.startsAt)}{order.expiresAt && <> au {date(order.expiresAt)}</>}</p>}
           <p className="mt-2 break-all text-xs text-white/50">Référence de commande : {order.id}</p>{account.environment === "live" && order.status === "pending" && <Link href={`/premium?order=${encodeURIComponent(order.id)}`} className="mt-3 inline-block text-amber-200 underline">Vérifier, reprendre ou changer de moyen de paiement →</Link>}
         </li>)}</ul></div>}

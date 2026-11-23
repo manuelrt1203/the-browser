@@ -1,3 +1,5 @@
+import { REGIONAL_PRICE_VERSION, regionalOffer, formatRegionalAmount } from "./regional-pricing.ts";
+
 /** Legacy offer retained for orders created before plan pricing was introduced.
  * New purchases MUST select a plan through premiumOffer/createPremiumOrder. */
 export const PREMIUM_OFFERS = {
@@ -13,9 +15,9 @@ export const PREMIUM_PLANS = {
 } as const;
 export type PremiumPlan = keyof typeof PREMIUM_PLANS;
 export const PREMIUM_PRICE_VERSION = "2026-11-22" as const;
-export const premiumTermsVersion = (base: string) => `${base}|${PREMIUM_PRICE_VERSION}`;
+export const premiumTermsVersion = (base: string) => `${base}|${REGIONAL_PRICE_VERSION}`;
 export function formatPremiumAmount(amountMinor: number, currency: string) {
-  return new Intl.NumberFormat("fr-FR", {style: "currency", currency}).format(currency === "EUR" ? amountMinor / 100 : amountMinor);
+  return formatRegionalAmount(amountMinor, currency);
 }
 export function validPremiumPlan(value: unknown): value is PremiumPlan { return typeof value === "string" && Object.hasOwn(PREMIUM_PLANS, value); }
 export function premiumOffer(provider: PaymentProvider, plan: PremiumPlan) {
@@ -36,7 +38,9 @@ export type PremiumOrder = {
   currency: string;
   status: PaymentStatus;
   plan?: PremiumPlan;
-  priceVersion?: typeof PREMIUM_PRICE_VERSION;
+  priceVersion?: typeof PREMIUM_PRICE_VERSION | typeof REGIONAL_PRICE_VERSION;
+  countryCode?: string;
+  zone?: string;
   confirmedPaymentId?: string;
   startsAt?: string;
   expiresAt?: string;
@@ -46,8 +50,12 @@ export type PremiumOrder = {
  * orders. Updating the public price must never reprice a pending payment. */
 export function orderOffer(order: PremiumOrder) {
   const legacy = order.plan === undefined && order.priceVersion === undefined;
-  if (!legacy && (order.priceVersion !== PREMIUM_PRICE_VERSION || !validPremiumPlan(order.plan))) throw new Error("Version de tarif invalide");
-  const offer = legacy ? {...PREMIUM_OFFERS[order.provider], months: 1, plan: "monthly" as const} : premiumOffer(order.provider, order.plan!);
+  const regional = order.priceVersion === REGIONAL_PRICE_VERSION;
+  if (!legacy && (!validPremiumPlan(order.plan) || (!regional && order.priceVersion !== PREMIUM_PRICE_VERSION))) throw new Error("Version de tarif invalide");
+  if (!regional && (order.countryCode !== undefined || order.zone !== undefined)) throw new Error("Région historique invalide");
+  const offer = regional ? {provider: order.provider, ...regionalOffer(order.countryCode ?? "", order.plan!)}
+    : legacy ? {...PREMIUM_OFFERS[order.provider], months: 1, plan: "monthly" as const} : premiumOffer(order.provider, order.plan!);
+  if (regional && order.zone !== (offer as ReturnType<typeof regionalOffer>).zone) throw new Error("Zone invalide");
   if (!offer || offer.amountMinor !== order.amountMinor || offer.currency !== order.currency) throw new Error("Tarif de commande invalide");
   return offer;
 }
@@ -70,7 +78,12 @@ export function calendarExpiry(start: Date, months: number): Date {
 
 /** Omitting plan reconstructs a historical monthly offer. New stored purchases
  * always pass an explicit plan, including monthly. */
-export function createPremiumOrder(id: string, provider: PaymentProvider, plan?: PremiumPlan): PremiumOrder {
+export function createPremiumOrder(id: string, provider: PaymentProvider, plan?: PremiumPlan, countryCode?: string): PremiumOrder {
+  if (!["stripe", "saspay"].includes(provider) || (countryCode !== undefined && plan === undefined)) throw new Error("Commande invalide");
+  if (countryCode !== undefined) {
+    const offer = regionalOffer(countryCode, plan!);
+    return {id, provider, plan, priceVersion: REGIONAL_PRICE_VERSION, countryCode, zone: offer.zone, amountMinor: offer.amountMinor, currency: offer.currency, status: "pending"};
+  }
   const offer = plan === undefined ? PREMIUM_OFFERS[provider] : premiumOffer(provider, plan);
   return { id, provider, amountMinor: offer.amountMinor, currency: offer.currency, status: "pending",
     ...(plan === undefined ? {} : {plan, priceVersion: PREMIUM_PRICE_VERSION}) };

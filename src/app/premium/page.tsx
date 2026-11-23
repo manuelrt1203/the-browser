@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { PremiumCheckout } from "@/components/PremiumCheckout";
 import { premiumSalesEnabled, liveProviderEnabled } from "@/lib/premium-sales";
 import Link from "next/link";
-import { premiumOffer, premiumTermsVersion } from "@/lib/subscription";
+import { premiumTermsVersion } from "@/lib/subscription";
 import { PremiumDemo } from "@/components/PremiumDemo";
 import { stripeTestEnabled } from "@/lib/stripe-test";
 import { premiumAuthEnabled } from "@/lib/premium-auth";
@@ -17,7 +17,7 @@ export default function PremiumPage() {
   return <main className="mx-auto w-full max-w-5xl px-5 pb-16 text-white sm:px-8">
     <div className="premium-layout mt-8 sm:mt-14">
       <div className="page-intro !mt-0"><p className="eyebrow">The Browser Premium</p><h1>Vos découvertes.<br /><span className="text-[var(--amber)]">Un accès privilégié.</span></h1><p>Retrouvez l’accès au canal Telegram privé dans une formule de 1, 3 ou 12 mois, associée à votre compte.</p><Link href="/mon-abonnement" className="button-primary mt-7">Mon abonnement <span aria-hidden="true">↗</span></Link><Link href="/" className="button-secondary mt-3 block">Explorer le catalogue public →</Link></div>
-      <section className="premium-price" aria-labelledby="offre-titre"><p className="eyebrow">À votre rythme.</p><h2 id="offre-titre">{premiumOffer("saspay", "monthly").label} <span>/ mois</span></h2><p className="mt-2 text-sm text-white/55">{!sales || liveProviderEnabled("stripe") ? <>Ou {premiumOffer("stripe", "monthly").label} en euros.</> : "Le paiement par carte sera proposé prochainement."}</p><ul className="premium-perks"><li>Accès au canal privé après confirmation du paiement.</li><li>1, 3 ou 12 mois d’accès, à partir du paiement confirmé.</li><li>Renouvellement manuel, sans prélèvement automatique.</li><li>Le catalogue public reste accessible à tous.</li></ul><p className="premium-notice">{sales ? "Choisissez votre moyen de paiement ci-dessous." : "Ouverture prochainement. Les paiements ne sont pas encore disponibles."}</p></section>
+      <section className="premium-price" aria-labelledby="offre-titre"><p className="eyebrow">À votre rythme.</p><h2 id="offre-titre">Votre pays.<br /><span>Votre formule.</span></h2><p className="mt-2 text-sm text-white/55">Des tarifs en monnaie locale pour l’Afrique francophone et en euros pour l’Europe francophone.</p><ul className="premium-perks"><li>Accès au canal privé après confirmation du paiement.</li><li>1, 3 ou 12 mois d’accès, à partir du paiement confirmé.</li><li>Renouvellement manuel, sans prélèvement automatique.</li><li>Le catalogue public reste accessible à tous.</li></ul><p className="premium-notice">{sales ? "Choisissez votre pays, puis votre formule ci-dessous." : "Ouverture prochainement. Les paiements ne sont pas encore disponibles."}</p></section>
     </div>
     <div className="mx-auto max-w-2xl">{sales && <Suspense fallback={<p>Chargement du paiement…</p>}><PremiumCheckout stripe={liveProviderEnabled("stripe")} saspay={liveProviderEnabled("saspay")} termsVersion={premiumTermsVersion(process.env.COMMERCIAL_TERMS_VERSION!)} /></Suspense>}{demo && <PremiumDemo />}{!sales && premiumAuthEnabled() && <TelegramAccount />}{premiumChannelAccessEnabled() && <PremiumChannelAccess />}
     {stripeTestEnabled() && <Link href="/premium/stripe-test" className="button-secondary mt-6">Essayer le paiement Stripe en mode test →</Link>}

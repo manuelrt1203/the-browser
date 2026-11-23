@@ -25,7 +25,8 @@ globalThis.fetch = async (input, options = {}) => {
     throw new Error('Unexpected Telegram mutation in payment fixture');
   }
   if (url.hostname === 'api.stripe.com') {
-    if (url.pathname === '/v1/account') return Response.json({object:'account',charges_enabled:true,payouts_enabled:true});
+    if (url.pathname === '/v1/account') return Response.json({object:'account',country:'FR',charges_enabled:true,payouts_enabled:true});
+    if (url.pathname === '/v1/country_specs/FR') return Response.json({object:'country_spec',id:'FR',supported_payment_currencies:['eur','xaf','xof','cdf','gnf','mga','rwf','bif','djf','kmf','mad','dzd','mur','scr']});
     if (url.pathname === '/v1/balance') return Response.json({ object:'balance',livemode:live });
     if (url.pathname === '/v1/checkout/sessions' && options.method === 'POST') {
       const params = new URLSearchParams(options.body);
@@ -45,11 +46,12 @@ globalThis.fetch = async (input, options = {}) => {
     return Response.json({error:{type:'invalid_request_error',message:'Unknown test session'}},{status:404});
   }
   if(url.hostname===(live?'api.saspay.me':'sandbox-api.saspay.me')){
+    if(url.pathname.endsWith('/pricing/my-rates/')) return Response.json({success:true,data:[['CG','XAF'],['FR','EUR'],['SN','XOF'],['CD','CDF'],['GN','GNF'],['MG','MGA']].map(([country_code,currency])=>({country_code,currency,payin:{available:true,tiers:[{currency,min_amount:'0.00',max_amount:'100000000.00'}]}}))});
     if(url.pathname.endsWith('/countries/'))return Response.json({success:true,data:[{id:sasPayCountry,iso_code:'CG',name:'Congo',default_currency:'XAF',is_active:true}]});
     if(url.pathname.endsWith('/networks/'))return Response.json({success:true,data:{next:null,results:[{country:sasPayCountry,name:'MTN',code:'fixture_mtn_cg',is_active:true},{country:sasPayCountry,name:'Airtel',code:'fixture_airtel_cg',is_active:true}]}});
     if(url.pathname==='/api/v1/checkout-sessions/' && options.method==='POST'){
       const body=JSON.parse(options.body),id=randomUUID(),paymentId=randomUUID();
-      if(body.country || body.network || body.customer_phone || !['1500.00','4000.00','15000.00','3000.00'].includes(body.amount) || body.currency!=='XAF')throw new Error('Hosted contract');
+      if(body.network || body.customer_phone || !/^\d+\.\d{2,3}$/.test(body.amount) || !/^[A-Z]{3}$/.test(body.currency))throw new Error('Hosted contract');
       const session={...body,id,status:'PENDING',transaction:null,checkout_url:`https://${live?'checkout':'sandbox-checkout'}.saspay.me/checkout/${id}`};
       checkouts.set(id,{session,paymentId});
       // The checkout may settle in another currency. Source amount stays on the session.

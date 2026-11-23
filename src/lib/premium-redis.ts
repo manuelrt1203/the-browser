@@ -133,12 +133,12 @@ export function premiumRedis(environment: "test" | "live") {
   }
 
   /** telegramUserId MUST come from a verified login, not a client-supplied ID. */
-  async function createOrder(id: string, telegramUserId: string, provider: PaymentProvider, plan: PremiumPlan = "monthly") {
+  async function createOrder(id: string, telegramUserId: string, provider: PaymentProvider, plan: PremiumPlan = "monthly", countryCode?: string) {
     if (!validTelegramId(telegramUserId) || !["stripe", "saspay"].includes(provider)) throw new PremiumStorageError("IDENTITY");
-    const order: StoredPremiumOrder = { ...createPremiumOrder(id, provider, plan), environment, telegramUserId };
+    const order: StoredPremiumOrder = { ...createPremiumOrder(id, provider, plan, countryCode), environment, telegramUserId };
     const result = await command(["EVAL", CREATE, 2, orderKey(id), `${prefix}:user:${telegramUserId}:orders`, JSON.stringify(order), id]);
     const saved = decode(result, id);
-    if (saved.telegramUserId !== telegramUserId || saved.provider !== provider || (saved.plan ?? "monthly") !== plan) throw new PremiumStorageError("ORDER_CONFLICT");
+    if (saved.telegramUserId !== telegramUserId || saved.provider !== provider || (saved.plan ?? "monthly") !== plan || saved.countryCode !== countryCode) throw new PremiumStorageError("ORDER_CONFLICT");
     return saved;
   }
 
