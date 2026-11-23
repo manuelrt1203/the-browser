@@ -1,55 +1,77 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function TelegramAccount({ onChange }: { onChange?: (connected: boolean) => void }) {
   const [status, setStatus] = useState("loading");
   const [telegramUrl, setTelegramUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const sequence = useRef(0), active = useRef<AbortController | null>(null), mutating = useRef(false);
 
   const refresh = useCallback(async () => {
+    if (active.current || mutating.current) return;
+    const controller = new AbortController(), id = ++sequence.current;
+    active.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
     try {
-      const response = await fetch("/api/premium/auth/session", { cache: "no-store" });
+      const response = await fetch("/api/premium/auth/session", { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error();
       const session = await response.json();
+      if (id !== sequence.current) return;
+      if (!["anonymous", "pending", "connected"].includes(session.status)) throw new Error();
       setStatus(session.status); onChange?.(session.status === "connected"); setError("");
       if (session.status !== "pending") setTelegramUrl("");
-    } catch { setError("Connexion Telegram momentanément indisponible."); onChange?.(false); }
+    } catch { if (id === sequence.current) { setStatus("unavailable"); setError("Connexion Telegram momentanément indisponible."); onChange?.(false); } }
+    finally { clearTimeout(timeout); if (active.current === controller) active.current = null; }
   }, [onChange]);
 
+  const cancelRequests = useCallback(() => {
+    sequence.current++; active.current?.abort(); active.current = null; mutating.current = false;
+  }, []);
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/premium/auth/session", { cache: "no-store", signal: controller.signal })
-      .then(response => { if (!response.ok) throw new Error(); return response.json(); })
-      .then(session => { setStatus(session.status); onChange?.(session.status === "connected"); })
-      .catch(() => { if (!controller.signal.aborted) { setStatus("anonymous"); setError("Connexion Telegram momentanément indisponible."); onChange?.(false); } });
-    return () => controller.abort();
-  }, [onChange]);
+    const timer = setTimeout(() => { void refresh(); }, 0);
+    return () => { clearTimeout(timer); cancelRequests(); };
+  }, [refresh, cancelRequests]);
   useEffect(() => {
-    if (!telegramUrl) return;
-    const interval = setInterval(() => { void refresh(); }, 3000);
+    if (status !== "pending") return;
+    const interval = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 4000);
     return () => clearInterval(interval);
-  }, [telegramUrl, refresh]);
+  }, [status, refresh]);
+  useEffect(() => {
+    const resume = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", resume); window.addEventListener("focus", resume);
+    return () => { document.removeEventListener("visibilitychange", resume); window.removeEventListener("focus", resume); };
+  }, [refresh]);
 
   async function start() {
+    if (mutating.current) return;
+    mutating.current = true; const id = ++sequence.current;
+    active.current?.abort(); const controller = new AbortController(); active.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/premium/auth/start", { method: "POST" });
+      const response = await fetch("/api/premium/auth/start", { method: "POST", signal: controller.signal });
       if (!response.ok) throw new Error();
       const data = await response.json();
+      if (id !== sequence.current) return;
       setTelegramUrl(data.telegramUrl); setStatus("pending"); onChange?.(false);
-    } catch { setError("Impossible de démarrer la connexion. Réessayez plus tard."); }
-    finally { setBusy(false); }
+    } catch { if (id === sequence.current) setError("Impossible de démarrer la connexion. Patientez puis réessayez."); }
+    finally { clearTimeout(timeout); if (active.current === controller) active.current = null; if (id === sequence.current) { mutating.current = false; setBusy(false); } }
   }
   async function logout() {
+    if (mutating.current) return;
+    mutating.current = true; const id = ++sequence.current;
+    active.current?.abort(); const controller = new AbortController(); active.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/premium/auth/logout", { method: "POST" });
+      const response = await fetch("/api/premium/auth/logout", { method: "POST", signal: controller.signal });
       if (!response.ok) throw new Error();
+      if (id !== sequence.current) return;
       setStatus("anonymous"); setTelegramUrl(""); onChange?.(false);
-    } catch { setError("Déconnexion indisponible. Réessayez."); }
-    finally { setBusy(false); }
+    } catch { if (id === sequence.current) setError("Déconnexion indisponible. Réessayez."); }
+    finally { clearTimeout(timeout); if (active.current === controller) active.current = null; if (id === sequence.current) { mutating.current = false; setBusy(false); } }
   }
   return <section className="mt-8 surface-panel p-6">
     <h2 className="text-xl font-semibold">Votre compte Telegram</h2>

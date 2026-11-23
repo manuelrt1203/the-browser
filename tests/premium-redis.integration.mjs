@@ -1,3 +1,4 @@
+import {premiumRateLimit,PREMIUM_LIMITS} from "../src/lib/premium-rate-limit.ts";
 // Explicit suite: REDIS_TEST_SERVER=/path/redis-server REDIS_TEST_CLI=/path/redis-cli node --test tests/premium-redis.integration.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,6 +43,16 @@ test('Premium : vrais scripts Lua sur un Redis isolé, sans accès à la product
       assert.equal(options.headers.Authorization,'Bearer local-fixture-token');
       return Response.json({ result: await command(JSON.parse(options.body)) });
     };
+    await t.test('limites distribuées : concurrence, TTL fixe, namespaces et sujets privés',async()=>{
+      const subject='ip:203.0.113.7',scope='payment-create',maximum=PREMIUM_LIMITS[scope].maximum;
+      const responses=await Promise.all(Array.from({length:32},()=>premiumRateLimit(scope,subject,command,'test')));
+      assert.equal(responses.filter(r=>r===null).length,maximum);
+      assert.ok(responses.filter(Boolean).every(r=>r.status===429&&Number(r.headers.get('retry-after'))>0));
+      const keys=await command(['KEYS','the-browser:{premium:test}:rate:*']);assert.equal(keys.length,1);assert.ok(!keys[0].includes('203.0.113'));
+      assert.ok(await command(['TTL',keys[0]])>0);
+      await command(['EXPIRE',keys[0],5]);await premiumRateLimit(scope,subject,command,'test');assert.ok(await command(['TTL',keys[0]])<=5,'les refus ne prolongent pas la fenêtre');
+      assert.equal(await premiumRateLimit(scope,subject,command,'live'),null);assert.equal(await premiumRateLimit(scope,'another',command,'test'),null);
+    });
     const store=premiumRedis('test');const id=randomUUID();const user='12345';
     const payment={orderId:id,provider:'stripe',sessionId:'cs_test_a',paymentId:'pi_test_a',amountMinor:457,currency:'EUR',paidAt:'2026-01-31T14:00:00Z'};
     await t.test('création concurrente idempotente, propriétaire immuable et session unique',async()=>{

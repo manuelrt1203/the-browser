@@ -1,3 +1,4 @@
+import { limitedRequestBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { applyStripeTestEvent, stripeTestClient, stripeTestEnabled, STRIPE_TEST_EVENTS } from "@/lib/stripe-test";
 import { premiumRedis, validPremiumOrderId } from "@/lib/premium-redis";
 import type Stripe from "stripe";
@@ -9,9 +10,11 @@ export async function POST(request: Request) {
   let client;
   try { client = stripeTestClient(); }
   catch { return Response.json({ error: "Clé Stripe de test non configurée" }, { status: 503 }); }
+  let body;
+  try { body = await limitedRequestBody(request, 128_000); } catch (error) { return requestBodyErrorResponse(error); }
   let event: Stripe.Event;
   try {
-    event = client.webhooks.constructEvent(await request.text(), request.headers.get("stripe-signature") ?? "", secret);
+    event = client.webhooks.constructEvent(body, request.headers.get("stripe-signature") ?? "", secret);
     if (event.livemode) throw new Error("Événement de production refusé");
   } catch { return Response.json({ error: "Signature ou mode invalide" }, { status: 400 }); }
   if (!STRIPE_TEST_EVENTS.has(event.type)) return Response.json({ received: true });

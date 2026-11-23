@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useCallback, useEffect } from "react";
+import { useMemo, useRef, useCallback, useEffect, useDeferredValue } from "react";
 import { useSearchParams } from "next/navigation";
 import { catalogueState, catalogueHref, browseCatalogue } from "@/lib/catalogue-browsing";
 import { useWatchlist } from "@/lib/watchlist";
-import { TitleDialog } from "./TitleDialog";
+import dynamic from "next/dynamic";
+const TitleDialog = dynamic(() => import("./TitleDialog").then(module => module.TitleDialog), {loading: () => <p role="status" className="catalogue-notice">Ouverture de la fiche…</p>});
 import { CinemaCarousel } from "./CinemaCarousel";
 import type { Kind, Title } from "@/data/catalogue";
 
@@ -30,6 +31,7 @@ function Poster({ item }: { item: Title }) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
+        decoding="async"
         src={item.poster}
         alt=""
         width={400}
@@ -59,7 +61,8 @@ function Poster({ item }: { item: Title }) {
 export function Catalogue({ items }: { items: Title[] }) {
   const search = useRef<HTMLInputElement>(null);
   const params = useSearchParams();
-  const state = catalogueState(new URLSearchParams(params.toString()));
+  const queryString = params.toString();
+  const state = useMemo(() => catalogueState(new URLSearchParams(queryString)), [queryString]);
   const { q: query, kind, genre, year, view } = state;
   const { saved, toggle, error } = useWatchlist();
   const selected = items.find(item => item.id === state.title) ?? null;
@@ -88,7 +91,9 @@ export function Catalogue({ items }: { items: Title[] }) {
     [items],
   );
 
-  const visible = browseCatalogue(items, state, saved);
+  const deferredQuery = useDeferredValue(query);
+  const filterState = useMemo(() => ({q: deferredQuery, kind, genre, year, view, title: null}), [deferredQuery, kind, genre, year, view]);
+  const visible = useMemo(() => browseCatalogue(items, filterState, saved), [items, filterState, saved]);
 
   return <>
     <section className="cinema-hero" aria-labelledby="decouverte-titre">
@@ -101,7 +106,7 @@ export function Catalogue({ items }: { items: Title[] }) {
       </div>
       <CinemaCarousel items={items} suspended={!!selected} onOpenTitle={openTitle} catalogueQuery={params.toString()} />
     </section>
-    <section id="catalogue" aria-labelledby="catalogue-titre" className="catalogue-section">
+    <section id="catalogue" aria-busy={query !== deferredQuery} aria-labelledby="catalogue-titre" className="catalogue-section">
       <div className="catalogue-heading"><h2 id="catalogue-titre" tabIndex={-1}>Le catalogue<span className="text-[var(--amber)]">.</span></h2><p>Films, séries &amp; belles découvertes</p></div>
       <nav className="catalogue-views" aria-label="Collections du catalogue">
         {([['catalogue','Tout le catalogue'],['recent','Ajouts récents'],['a-voir','À voir']] as const).map(([key,label]) => <button key={key} type="button" data-catalogue-view={key} aria-pressed={view === key} onClick={() => update({ vue: key === 'catalogue' ? null : key }, true)}>{label}{key === 'a-voir' && <span>{items.filter(item => saved.has(item.id)).length}</span>}</button>)}
@@ -196,6 +201,6 @@ export function Catalogue({ items }: { items: Title[] }) {
       )}
     </section>
     {error && !selected && <p className="watchlist-error" role="status">{error}</p>}
-    <TitleDialog error={error} item={selected} saved={selected ? saved.has(selected.id) : false} onToggle={() => { if (selected) toggle(selected.id); }} onClose={closeTitle} />
+    {selected && <TitleDialog error={error} item={selected} saved={selected ? saved.has(selected.id) : false} onToggle={() => { if (selected) toggle(selected.id); }} onClose={closeTitle} />}
   </>;
 }

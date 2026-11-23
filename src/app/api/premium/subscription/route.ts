@@ -1,3 +1,4 @@
+import { premiumRateLimit } from "@/lib/premium-rate-limit";
 import { premiumAuthEnabled, premiumEnvironment } from "@/lib/premium-auth";
 import { premiumIdentity } from "@/lib/premium-session";
 import { premiumRedis } from "@/lib/premium-redis";
@@ -10,6 +11,8 @@ export async function GET() {
   try {
     const identity = await premiumIdentity();
     if (!identity) return Response.json({ error: "Connexion Telegram requise" }, { status: 401, headers });
+    const limited = await premiumRateLimit("subscription", `user:${identity.telegramUserId}`);
+    if (limited) return limited;
     const environment = premiumEnvironment();
     const account = subscriptionAccount(await premiumRedis(environment).listOrders(identity.telegramUserId), environment, identity.telegramUserId);
     return Response.json({ ...account, channelAccessAvailable: account.status === "active" && premiumChannelAccessEnabled() }, { headers });

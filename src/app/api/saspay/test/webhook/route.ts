@@ -1,3 +1,4 @@
+import { limitedRequestBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { saspayTestEnabled, sasPayId, verifySasPaySignature, sasPayWebhookSecretConfigured } from "@/lib/saspay";
 import { refreshSasPayTestOrder, findSasPayTestOrder } from "@/lib/saspay-orders";
 
@@ -7,8 +8,8 @@ export async function POST(request: Request) {
   if (!sasPayWebhookSecretConfigured(secret)) {
     return Response.json({ error: "Secret webhook SasPay absent ou remplacé par un marqueur technique ; configurer sa valeur réelle dans Vercel Preview" }, { status: 503 });
   }
-  const body = Buffer.from(await request.arrayBuffer());
-  if (body.byteLength > 128_000) return new Response(null, { status: 413 });
+  let body;
+  try { body = await limitedRequestBody(request, 128_000); } catch (error) { return requestBodyErrorResponse(error); }
   if (!verifySasPaySignature(body, request.headers.get("x-webhook-signature") ?? "",
       request.headers.get("x-webhook-timestamp") ?? "", secret)) {
     return Response.json({ error: "Signature ou horodatage invalide" }, { status: 400 });

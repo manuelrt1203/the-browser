@@ -1,3 +1,4 @@
+import { premiumRateLimit } from "@/lib/premium-rate-limit";
 import { livePaymentRuntime, refreshLivePayment, stripeLiveClient } from "@/lib/premium-sales";
 import { premiumIdentity } from "@/lib/premium-session";
 import { premiumRedis, validPremiumOrderId } from "@/lib/premium-redis";
@@ -6,11 +7,13 @@ export async function GET(request: Request) {
   try {
     const identity = await premiumIdentity();
     if (!identity) return new Response(null, { status: 401 });
+    const limited = await premiumRateLimit("payment-status", `user:${identity.telegramUserId}`);
+    if (limited) return limited;
     const id = new URL(request.url).searchParams.get("order") ?? "";
     if (!validPremiumOrderId(id)) return new Response(null, { status: 400 });
     const order = await premiumRedis("live").getOrder(id);
     if (!order || order.telegramUserId !== identity.telegramUserId) return new Response(null, { status: 404 });
-    const updated = order.providerSessionId ? await refreshLivePayment(order) : order;
+    const updated = order.status !== "confirmed" && order.providerSessionId ? await refreshLivePayment(order) : order;
     let checkoutUrl = updated.providerCheckoutUrl ?? null;
     if (updated.status === "pending" && updated.provider === "stripe" && updated.providerSessionId) {
       const session = await stripeLiveClient().checkout.sessions.retrieve(updated.providerSessionId);

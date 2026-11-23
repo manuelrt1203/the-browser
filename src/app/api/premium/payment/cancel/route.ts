@@ -1,3 +1,5 @@
+import { limitedJsonObject, RequestBodyError, requestBodyErrorResponse } from "@/lib/request-body";
+import { premiumRateLimit } from "@/lib/premium-rate-limit";
 import { livePaymentRuntime, withLivePurchase } from "@/lib/premium-sales";
 import { premiumIdentity } from "@/lib/premium-session";
 import { isPremiumSameOrigin } from "@/lib/premium-auth";
@@ -11,9 +13,9 @@ export async function POST(request: Request) {
     if (!isPremiumSameOrigin(request)) return new Response(null, { status: 403 });
     const identity = await premiumIdentity();
     if (!identity) return new Response(null, { status: 401 });
-    const raw = await request.text();
-    if (Buffer.byteLength(raw) > 1024) return new Response(null, { status: 413 });
-    const { orderId } = JSON.parse(raw);
+    const limited = await premiumRateLimit("payment-cancel", `user:${identity.telegramUserId}`);
+    if (limited) return limited;
+    const { orderId } = await limitedJsonObject(request, 1024);
     if (typeof orderId !== "string" || !validPremiumOrderId(orderId)) return new Response(null, { status: 400 });
     return await withLivePurchase(identity.telegramUserId, async lease => {
       const order = await premiumRedis("live").getOrder(orderId);
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
       return Response.json({ cancelled: true }, { headers });
     });
   } catch (error) {
+    if (error instanceof RequestBodyError) return requestBodyErrorResponse(error);
     return Response.json({ error: error instanceof PaymentChangeBlocked ? error.message : "Impossible de confirmer l’annulation. Conservez cette commande et réessayez avant un nouveau paiement." }, { status: error instanceof PaymentChangeBlocked ? 409 : 503, headers });
   }
 }

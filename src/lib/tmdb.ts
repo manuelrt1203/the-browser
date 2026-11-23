@@ -71,7 +71,10 @@ function toTitle(item: TmdbItem, kind: Kind): Title | null {
   };
 }
 
-async function fetchTitle(ref: Reference): Promise<Title | null> {
+async function fetchTitle(ref: Pick<Reference, "kind" | "id" | "year" | "expectedTitle">): Promise<Title | null> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("tmdb-metadata");
   const { kind, id } = ref;
   const path = kind === "film" ? "movie" : "tv";
   let item = await tmdb<TmdbItem>(`/${path}/${id}`);
@@ -114,7 +117,7 @@ export async function getCatalogue(): Promise<Title[]> {
   await Promise.all(Array.from({ length: Math.min(4, unique.length) }, async () => {
     while (next < unique.length) {
       const index = next++;
-      try { results[index] = { status: "fulfilled", value: await fetchTitle(unique[index]) }; }
+      try { results[index] = { status: "fulfilled", value: await fetchTitle({kind: unique[index].kind, id: unique[index].id, year: unique[index].year, expectedTitle: unique[index].expectedTitle}) }; }
       catch (reason) { results[index] = { status: "rejected", reason }; }
     }
   }));
@@ -123,7 +126,7 @@ export async function getCatalogue(): Promise<Title[]> {
   for (const result of results) {
     if (result.status === "fulfilled") {
       if (result.value) {
-        const title = result.value;
+        const title = { ...result.value };
         const episodes = channelPosts.flatMap((post) => post.titles)
           .filter((ref) => `${ref.kind}-${ref.id}` === title.id && ref.season !== undefined && ref.episode !== undefined)
           .map((ref) => ({ season: ref.season!, episode: ref.episode! }));

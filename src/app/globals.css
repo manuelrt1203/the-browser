@@ -311,3 +311,8 @@ h1, h2, h3 { text-wrap: balance; }
 }
 .watchlist-inline-error { margin-top: 15px; color: #ebc688; font-size: 12px; line-height: 1.8; }
 .detail-episode-group li { content-visibility: auto; contain-intrinsic-size: auto 41px; }
+
+/* Reserve layout while skipping paint work for off-screen catalogue cards. */
+@supports (content-visibility: auto) {
+  .catalogue-entry { content-visibility: auto; contain-intrinsic-size: auto 420px; }
+}

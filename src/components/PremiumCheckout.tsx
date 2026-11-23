@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PREMIUM_PLANS, formatPremiumAmount, type PremiumPlan } from "@/lib/subscription";
 import { PRICING_COUNTRIES, pricingCountry, regionalOffer } from "@/lib/regional-pricing";
@@ -34,51 +34,67 @@ export function PremiumCheckout({ stripe, saspay, termsVersion }: { stripe: bool
   const [needsRetry, setNeedsRetry] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [status, setStatus] = useState("");
+  const identityEpoch = useRef(0), wasConnected = useRef(false);
+  const changeConnection = useCallback((value: boolean) => {
+    if (wasConnected.current === value) return;
+    wasConnected.current = value; identityEpoch.current++; setConnected(value);
+    if (!value) {
+      formRef.current?.reset(); setAccepted(false); setBusy(false); setError("");
+      setOrder(""); setAttempt(""); setOrderPrice(null); setStatus(""); setResumeUrl(null); setNeedsRetry(false);
+      window.history.replaceState(null, "", "/premium");
+    }
+  }, []);
+  useEffect(() => () => { identityEpoch.current++; }, []);
+
   useEffect(() => {
     if (!connected || order || attempt) return;
-    const controller = new AbortController();
+    const controller = new AbortController(), epoch = identityEpoch.current;
     fetch("/api/premium/subscription", { cache: "no-store", signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => { const pending = data.orders?.find((o: { status: string }) => o.status === "pending"); if (!controller.signal.aborted && pending) { setOrder(pending.id); setProvider(pending.provider); setStatus("pending"); setPlan(pending.plan ?? "monthly"); setOrderPrice(pending); if (pending.countryCode) setCountryCode(pending.countryCode); } })
+      .then(data => { const pending = data.orders?.find((o: { status: string }) => o.status === "pending"); if (epoch === identityEpoch.current && !controller.signal.aborted && pending) { setOrder(pending.id); setProvider(pending.provider); setStatus("pending"); setPlan(pending.plan ?? "monthly"); setOrderPrice(pending); if (pending.countryCode) setCountryCode(pending.countryCode); } })
       .catch(() => {});
     return () => controller.abort();
   }, [connected, order, attempt]);
   async function changePayment() {
+    const epoch = identityEpoch.current;
     const id = order || attempt;
     if (!id) return;
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/premium/payment/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: id }) });
       const data = await response.json().catch(() => ({}));
+      if (epoch !== identityEpoch.current) return;
       if (!response.ok) throw new Error(response.status === 401 ? "Reconnectez votre compte Telegram." : data.error ?? "Annulation indisponible");
       formRef.current?.reset();
       setProvider(provider === "saspay" && stripe ? "stripe" : saspay ? "saspay" : "stripe");
       setOrder(""); setAttempt(""); setStatus(""); setResumeUrl(null); setNeedsRetry(false); setOrderPrice(null); setAccepted(false);
       window.history.replaceState(null, "", "/premium");
-    } catch (e) { setError(e instanceof Error ? e.message : "Annulation indisponible"); }
-    finally { setBusy(false); }
+    } catch (e) { if (epoch === identityEpoch.current) setError(e instanceof Error ? e.message : "Annulation indisponible"); }
+    finally { if (epoch === identityEpoch.current) setBusy(false); }
   }
   async function refresh() {
+    const epoch = identityEpoch.current;
     setBusy(true); setError("");
-    try { const r = await fetch(`/api/premium/payment/status?order=${encodeURIComponent(order)}`, { cache: "no-store" }); const data = await r.json().catch(() => ({})); if (!r.ok) throw new Error(r.status === 401 ? "Reconnectez votre compte Telegram." : data.error ?? "Vérification indisponible"); setStatus(data.status); setResumeUrl(data.checkoutUrl ?? null); setNeedsRetry(!!data.needsRetry); if (data.provider) setProvider(data.provider); if (data.plan) setPlan(data.plan); if (typeof data.amountMinor === "number") setOrderPrice(data); if (data.countryCode) setCountryCode(data.countryCode); }
-    catch (e) { setError(e instanceof Error ? e.message : "Vérification indisponible"); }
-    finally { setBusy(false); }
+    try { const r = await fetch(`/api/premium/payment/status?order=${encodeURIComponent(order)}`, { cache: "no-store" }); const data = await r.json().catch(() => ({})); if (epoch !== identityEpoch.current) return; if (!r.ok) throw new Error(r.status === 401 ? "Reconnectez votre compte Telegram." : data.error ?? "Vérification indisponible"); setStatus(data.status); setResumeUrl(data.checkoutUrl ?? null); setNeedsRetry(!!data.needsRetry); if (data.provider) setProvider(data.provider); if (data.plan) setPlan(data.plan); if (typeof data.amountMinor === "number") setOrderPrice(data); if (data.countryCode) setCountryCode(data.countryCode); }
+    catch (e) { if (epoch === identityEpoch.current) setError(e instanceof Error ? e.message : "Vérification indisponible"); }
+    finally { if (epoch === identityEpoch.current) setBusy(false); }
   }
   async function pay(event: React.FormEvent<HTMLFormElement>) {
+    const epoch = identityEpoch.current;
     event.preventDefault(); setBusy(true); setError("");
     const id = attempt || crypto.randomUUID(); setProvider(selectedProvider); setAttempt(id);
     try {
       const values = Object.fromEntries(new FormData(event.currentTarget));
       const r = await fetch("/api/premium/payment", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": id }, body: JSON.stringify({ ...values, provider: selectedProvider, plan, countryCode, termsVersion }) });
-      const data = await r.json().catch(() => ({})); if (!r.ok) { if (data.attemptCreated === false) setAttempt(""); throw new Error(r.status === 401 ? "Reconnectez votre compte Telegram." : data.error ?? "Paiement indisponible"); }
+      const data = await r.json().catch(() => ({})); if (epoch !== identityEpoch.current) return; if (!r.ok) { if (data.attemptCreated === false) setAttempt(""); throw new Error(r.status === 401 ? "Reconnectez votre compte Telegram." : data.error ?? "Paiement indisponible"); }
       setProvider(selectedProvider); setOrder(data.orderId); setStatus(data.status); setOrderPrice(data); window.history.replaceState(null, "", `/premium?order=${encodeURIComponent(data.orderId)}`);
       if (data.checkoutUrl) window.location.assign(data.checkoutUrl);
-    } catch (e) { setError(e instanceof Error ? e.message : "Paiement indisponible"); }
-    finally { setBusy(false); }
+    } catch (e) { if (epoch === identityEpoch.current) setError(e instanceof Error ? e.message : "Paiement indisponible"); }
+    finally { if (epoch === identityEpoch.current) setBusy(false); }
   }
   return <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6" aria-labelledby="achat-titre">
     <h2 id="achat-titre" className="text-2xl font-semibold">Mon abonnement Premium</h2>
-    <TelegramAccount onChange={setConnected} />
+    <TelegramAccount onChange={changeConnection} />
     {order ? <div className="mt-6 space-y-4"><p className="font-semibold">{PREMIUM_PLANS[plan].label} · {PREMIUM_PLANS[plan].duration}{orderPrice && <> · {formatPremiumAmount(orderPrice.amountMinor, orderPrice.currency)}</>}</p><p>Votre commande est enregistrée. Un retour de la page de paiement ne suffit pas à confirmer le règlement.</p><button type="button" className="button-primary" disabled={!connected || busy} onClick={refresh}>{busy ? "Vérification…" : "Vérifier ma commande"}</button>{needsRetry && <><p>La demande doit être reprise avec les mêmes coordonnées. Votre référence de tentative sera conservée.</p><button type="button" className="button-secondary" onClick={() => { setAttempt(order); setOrder(""); setNeedsRetry(false); }}>Reprendre la demande</button></>}{resumeUrl && status === "pending" && <a className="button-primary block" href={resumeUrl}>Continuer le paiement →</a>}<Link className="button-secondary block" href="/mon-abonnement">Voir mon abonnement et accéder au canal →</Link></div> : <form ref={formRef} className="mt-6 grid gap-4" onSubmit={pay}>
       {!(attempt && orderPrice) && <>
       <label className="grid gap-2">Pays de facturation

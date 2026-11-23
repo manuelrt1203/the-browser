@@ -1,3 +1,4 @@
+import { limitedRequestBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { premiumChannelAccessEnabled, withChannelAccess } from "@/lib/premium-channel-access";
 import { revalidateTag } from "next/cache";
 import { hasCatalogueStorage, readChannelState, saveChannelPost } from "@/lib/telegram-store";
@@ -18,8 +19,8 @@ export async function POST(request: Request) {
   if (!validTelegramWebhookSecret(request.headers.get("x-telegram-bot-api-secret-token") ?? "")) {
     return Response.json({ error: "Non autorisé" }, { status: 401 });
   }
-  const body = await request.text();
-  if (Buffer.byteLength(body) > 128_000) return new Response(null, { status: 413 });
+  let body;
+  try { body = (await limitedRequestBody(request, 128_000)).toString("utf8"); } catch (error) { return requestBodyErrorResponse(error); }
   let update;
   try { update = JSON.parse(body); }
   catch { return Response.json({ error: "JSON invalide" }, { status: 400 }); }

@@ -1,3 +1,4 @@
+import {requestedTitles} from "../../src/data/selection.ts";
 // Isolated integration-test process only. Never import this in application code.
 import { execFile as callback } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -19,6 +20,12 @@ globalThis.fetch = async (input, options = {}) => {
     // otherwise defaults to RESP3 maps, which would change the wire contract.
     const { stdout } = await execFile(process.env.REDIS_TEST_CLI, ['-s',process.env.PREMIUM_TEST_REDIS_SOCKET,'-2','--json',...args.map(String)]);
     return Response.json({ result: JSON.parse(stdout) });
+  }
+  if(url.hostname==='api.themoviedb.org' && process.env.PREMIUM_TEST_CATALOGUE_FIXTURE==='1'){
+    await execFile(process.env.REDIS_TEST_CLI,['-s',process.env.PREMIUM_TEST_REDIS_SOCKET,'INCR','fixture:tmdb:requests']);
+    const id=Number(url.pathname.split('/').at(-1)),kind=url.pathname.includes('/tv/')?'serie':'film';
+    const ref=requestedTitles.find(r=>r.id===id&&r.kind===kind);
+    return Response.json({id,title:ref?.title??'Nouveau film fixture',name:ref?.title??'Nouveau film fixture',release_date:`${ref?.year??2026}-01-01`,first_air_date:`${ref?.year??2026}-01-01`,overview:'Synopsis de test',poster_path:'/fixture.jpg',genres:[]});
   }
   if(url.hostname==='api.telegram.org'){
     if(url.pathname.endsWith('/getChatMember')){const body=JSON.parse(options.body);return Response.json({ok:true,result:{status:body.user_id===23456?'creator':'administrator'}});}

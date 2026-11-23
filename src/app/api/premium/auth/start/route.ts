@@ -1,3 +1,4 @@
+import { premiumRateLimit, requestRateSubject } from "@/lib/premium-rate-limit";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isPremiumSameOrigin, premiumAuthEnabled, premiumAuthStore, premiumCookieName, premiumEnvironment,
@@ -7,6 +8,8 @@ export async function POST(request: Request) {
   if (!premiumAuthEnabled()) return new Response(null, { status: 404 });
   try {
     if (!isPremiumSameOrigin(request)) return NextResponse.json({ error: "Origine refusée" }, { status: 403 });
+    const limited = await premiumRateLimit("auth-start", requestRateSubject(request));
+    if (limited) return limited;
     const auth = premiumAuthStore(premiumEnvironment());
     const previous = (await cookies()).get(premiumCookieName())?.value;
     if (previous) await auth.logout(previous);

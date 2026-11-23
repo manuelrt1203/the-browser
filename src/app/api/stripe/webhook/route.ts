@@ -1,3 +1,4 @@
+import { limitedRequestBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { livePaymentRuntime, stripeLiveClient, refreshLivePayment } from "@/lib/premium-sales";
 import { premiumRedis, validPremiumOrderId } from "@/lib/premium-redis";
 import { STRIPE_TEST_EVENTS } from "@/lib/stripe-test";
@@ -7,10 +8,10 @@ export async function POST(request: Request) {
   if (!secret?.startsWith("whsec_")) return new Response(null, { status: 503 });
   let client;
   try { client = stripeLiveClient(); } catch { return new Response(null, { status: 503 }); }
+  let body;
+  try { body = await limitedRequestBody(request, 128_000); } catch (error) { return requestBodyErrorResponse(error); }
   let event;
   try {
-    const body = Buffer.from(await request.arrayBuffer());
-    if (body.byteLength > 128_000) return new Response(null, { status: 413 });
     event = client.webhooks.constructEvent(body, request.headers.get("stripe-signature") ?? "", secret);
     if (!event.livemode) throw new Error("Mode test refusé");
   } catch { return new Response(null, { status: 400 }); }

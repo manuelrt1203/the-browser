@@ -19,7 +19,7 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
  try{
   for(let i=0;i<100;i++){try{if(await command(['PING'])==='PONG')break;}catch{}await new Promise(r=>setTimeout(r,20));}
   const reserve=createServer();reserve.listen(0,'127.0.0.1');await once(reserve,'listening');const port=reserve.address().port;await new Promise(r=>reserve.close(r));const origin=`http://127.0.0.1:${port}`,site="https://the-browser-fixture.example";
-  app=spawn(process.execPath,['--import',resolve('tests/fixtures/premium-runtime.mjs'),resolve('node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_OPTIONS:'',NODE_USE_ENV_PROXY:'0',NODE_ENV:'development',PREMIUM_TEST_FIXTURES:'1',PREMIUM_TEST_LIVE_FIXTURE:'1',PREMIUM_TEST_REDIS_SOCKET:socket,PREMIUM_TEST_PAYMENT_STATE:paymentState,VERCEL:'1',VERCEL_ENV:'production',PREMIUM_ENVIRONMENT:'live',PREMIUM_SALES_ENABLED:'1',STRIPE_LIVE_ENABLED:'1',SASPAY_LIVE_ENABLED:'1',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SITE_URL:site,SELLER_NAME:'Fixture',COMMERCIAL_TERMS_VERSION:'fixture-v1',SUPPORT_EMAIL:'support@example.com',KV_REST_API_URL:'https://premium-redis.invalid',KV_REST_API_TOKEN:'fixture',TELEGRAM_CHANNEL_ID:'-1004339801492',TELEGRAM_WEBHOOK_SECRET:'telegram-fixture',STRIPE_SECRET_KEY:'sk_live_fixture_not_a_real_key',STRIPE_WEBHOOK_SECRET_LIVE:'whsec_live_fixture',SASPAY_API_KEY:'sk_live_fixture_not_a_real_key',SASPAY_WEBHOOK_SECRET:'saspay_live_fixture',SASPAY_LIVE_FEE_MODE:'DEDUCTED',PREMIUM_ACCESS_CRON_SECRET:'fixture_maintenance',TELEGRAM_COPY_ENABLED:'1',TELEGRAM_PREMIUM_CHANNEL_ID:'-1009999999999'},stdio:['ignore','pipe','pipe']});
+  app=spawn(process.execPath,['--import',resolve('tests/fixtures/premium-runtime.mjs'),resolve('node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_OPTIONS:'',NODE_USE_ENV_PROXY:'0',NODE_ENV:'development',PREMIUM_TEST_FIXTURES:'1',PREMIUM_TEST_LIVE_FIXTURE:'1',PREMIUM_TEST_CATALOGUE_FIXTURE:'1',TMDB_READ_TOKEN:'fixture',PREMIUM_TEST_REDIS_SOCKET:socket,PREMIUM_TEST_PAYMENT_STATE:paymentState,VERCEL:'1',VERCEL_ENV:'production',PREMIUM_ENVIRONMENT:'live',PREMIUM_SALES_ENABLED:'1',STRIPE_LIVE_ENABLED:'1',SASPAY_LIVE_ENABLED:'1',PREMIUM_TELEGRAM_AUTH_ENABLED:'1',PREMIUM_TELEGRAM_ACCESS_ENABLED:'1',SITE_URL:site,SELLER_NAME:'Fixture',COMMERCIAL_TERMS_VERSION:'fixture-v1',SUPPORT_EMAIL:'support@example.com',KV_REST_API_URL:'https://premium-redis.invalid',KV_REST_API_TOKEN:'fixture',TELEGRAM_CHANNEL_ID:'-1004339801492',TELEGRAM_WEBHOOK_SECRET:'telegram-fixture',STRIPE_SECRET_KEY:'sk_live_fixture_not_a_real_key',STRIPE_WEBHOOK_SECRET_LIVE:'whsec_live_fixture',SASPAY_API_KEY:'sk_live_fixture_not_a_real_key',SASPAY_WEBHOOK_SECRET:'saspay_live_fixture',SASPAY_LIVE_FEE_MODE:'DEDUCTED',PREMIUM_ACCESS_CRON_SECRET:'fixture_maintenance',TELEGRAM_COPY_ENABLED:'1',TELEGRAM_PREMIUM_CHANNEL_ID:'-1009999999999'},stdio:['ignore','pipe','pipe']});
   for(const stream of [app.stdout,app.stderr])stream.on('data',b=>logs=(logs+b.toString()).slice(-8000));
   let ready=false;for(let i=0;i<120;i++){try{if((await fetch(origin+'/api/premium/auth/session')).status===200){ready=true;break;}}catch{}if(app.exitCode!==null)break;await new Promise(r=>setTimeout(r,100));}assert.ok(ready,logs.slice(-2000));
   const post=(path,body,headers={})=>fetch(origin+path,{method:'POST',headers:{origin:site,'content-type':'application/json',...headers},body:JSON.stringify(body)});
@@ -151,6 +151,28 @@ test('HTTP live isolé : consentement, maintien, propriétaires, modes et confir
   assert.equal((await fetch(origin+`/api/premium/payment/status?order=${legacyId}`,{headers:{cookie:legacyCookie}})).status,200);
   const legacyPaid=JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${legacyId}`]));assert.equal(legacyPaid.amountMinor,3000);assert.equal(legacyPaid.expiresAt,expiry(legacyPaid.startsAt,1));assert.equal(legacyPaid.priceVersion,undefined);
   assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:terms:${legacyId}`])).version,'legacy-terms');
+  // Revalidation refreshes Telegram links but reuses already fetched TMDB metadata.
+  const home=await fetch(origin+'/');assert.equal(home.status,200);assert.match(await home.text(),/Le catalogue/);
+  const metadataCalls=await command(['GET','fixture:tmdb:requests']);assert.ok(Number(metadataCalls)>0);
+  const revalidate=await post('/api/telegram/revalidate',{}, {'x-telegram-bot-api-secret-token':'telegram-fixture'});assert.equal(revalidate.status,200);
+  await (await fetch(origin+'/')).text();assert.equal(await command(['GET','fixture:tmdb:requests']),metadataCalls,'unchanged titles do not refetch metadata');
+  const newPost={messageId:99001,version:1,updateId:1,resolutionVersion:2,text:'New fixture',titles:[{kind:'film',id:990000001}],pending:[]};
+  await command(['HSET','the-browser:telegram:-1004339801492','99001',JSON.stringify(newPost)]);
+  assert.equal((await post('/api/telegram/revalidate',{}, {'x-telegram-bot-api-secret-token':'telegram-fixture'})).status,200);
+  const updatedHome=await fetch(origin+'/');assert.match(await updatedHome.text(),/Nouveau film fixture/);assert.equal(Number(await command(['GET','fixture:tmdb:requests'])),Number(metadataCalls)+1,'a newly published title fetches only its own metadata');
+  // Global headers and bounds apply to errors as well as successful requests.
+  const page=await fetch(origin+'/premium');assert.equal(page.headers.get('x-frame-options'),'DENY');assert.equal(page.headers.get('x-content-type-options'),'nosniff');assert.equal(page.headers.get('x-powered-by'),null);
+  assert.match(page.headers.get('content-security-policy'),/frame-ancestors 'none'/);
+  for(const body of ['{','null','[]']){
+   const invalid=await fetch(origin+'/api/premium/payment',{method:'POST',headers:{origin:site,cookie:unsupportedCookie,'content-type':'application/json','idempotency-key':randomUUID()},body});assert.equal(invalid.status,400);
+  }
+  const huge=await fetch(origin+'/api/premium/payment',{method:'POST',headers:{origin:site,cookie:unsupportedCookie,'idempotency-key':randomUUID()},body:'x'.repeat(4097)});assert.equal(huge.status,413);
+  const notification=await fetch(origin+'/api/saspay/webhook',{method:'POST',body:'x'.repeat(128001)});assert.equal(notification.status,413,'oversize webhook rejected before signature parsing');
+  // Reject abuse without altering confirmed orders or provider sessions.
+  let limited;for(let i=0;i<14;i++){limited=await fetch(origin+`/api/premium/payment/status?order=${id}`,{headers:{cookie}});}
+  for(let i=0;i<31;i++)limited=await fetch(origin+`/api/premium/payment/status?order=${id}`,{headers:{cookie}});
+  assert.equal(limited.status,429);assert.ok(Number(limited.headers.get('retry-after'))>0);
+  assert.equal(JSON.parse(await command(['GET',`the-browser:{premium:live}:order:${id}`])).expiresAt,saved.expiresAt);
   assert.equal(await command(['SCARD','the-browser:{premium:live}:channel-access:users']),0,'aucune mutation Telegram dans ce test');
  }finally{for(const child of [app,redis])if(child&&child.exitCode===null){child.kill('SIGTERM');await once(child,'exit');}await rm(directory,{recursive:true,force:true});}
 });
