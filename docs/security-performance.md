@@ -42,3 +42,10 @@ Les notifications des prestataires et la maintenance ne passent pas par ces limi
 - Lint ciblé, TypeScript et build réussis. Aucun débit réel, changement de secret ou mutation de membre Telegram effectué pour ces essais.
 
 Les gains de cache et les comportements sont testés ; aucun score Lighthouse ou gain chiffré de temps de chargement sur les connexions réelles des clients n’est revendiqué. Le premier achat Live humain et le cycle complet d’attribution restent à observer comme auparavant.
+
+
+## Livraison vérifiée
+
+Code `cdfbfd2` sur main, Production `dpl_5p1hVQEXxSBioYpRAEyiYDhSYQLY` Ready, domaine https://the-browser-one.vercel.app. Contrôles HTTP : en-têtes présents sur pages et API, X-Powered-By absent ; session anonyme limitée àstatus ; achat anonyme401 sans cache ;31pays de paiement et109cartes catalogue, sans erreur de chargement. Readiness privé :Stripe/SasPay et leurs destinations webhook vérifiés, maintenance fraîche. Aucun débit réel ni changement des secrets/configurations des prestataires.
+
+Chromium a également vérifié les vrais assets du domaine Production, avec compte et paiements simulés : réponses tardives ignorées après déconnexion, appels de session sans chevauchement et aucune violationCSP. Transport des ressources publiques par fetch géré/CDP dans cette machine, sans mutation de paiement.
