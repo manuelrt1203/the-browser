@@ -10,6 +10,16 @@ Mise à jour : 23 novembre 2026. Ce document décrit les décisions du propriét
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Code applicatif vérifié :171tests unitaires,15résultats Redis isolé, lint ciblé sans erreur/avertissement, build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
+## Reprise des parcours privés — 23 novembre 2026
+
+Le propriétaire demande de continuer. Deuxième passe sécurité/fluidité : délais couvrant fetch+JSON, aucun retry automatique des POST ; messages d’erreur et attente429Retry-After. UUID conservé dans l’URL avant l’envoi, bouton de vérification de tentative après perte de réponse, anti-double-envoi client. Une ancienne référence sans données lues ne présente plus un prix/une durée supposés.
+
+Confidentialité renforcée entre onglets : session API=status + révision opaque32caractères seulement si connecté, aucun IDTelegram/jeton/hash d’authentification exposé. Changement de révision détecté au focus même si connected reste vrai : historique/tentative/lien privé effacés et requêtes tardives ignorées. Événement client uniquement pour effacer l’affichage, aucun rôle d’authentification. Le lien d’invitation affiche sa vraie échéance transmise par le serveur, puis disparaît ; son retour tardif après changement de session est ignoré.
+
+Disponibilités : états des prestataires ready/disabled/unavailable, panne distinguée d’un pays sans moyen. Prestataire sain utilisable, bouton de revérification. Cache à requête unique et TTL après résolution5min/15s ; erreurs inattendues également réessayables15s après. Avant création, le serveur refuse la disponibilité non vérifiable avec preuve qu’aucune tentative n’a été créée.
+
+Validation locale :178tests unitaires, parcours HTTP Live et test/Redis isolés réussis, lint/TypeScript/build réussis. Chromium Production : perte de réponse sans doublon, UUID/reprise, échéance lien, session connecté→connecté, réponses tardives,429, historique bloqué/reprise, panne vs couverture, anciens prix et320/390px. Détails dans docs/payment-resilience.md. Aucun débit réel, changement de secret ni mutation d’un membre Telegram. Livraison Production en cours.
+
 ## Sécurité et fluidité — 23 novembre 2026
 
 Demande du propriétaire de régler sécurité et fluidité. Première passe ciblée : en-têtes CSP/anti-iframe/nosniff/no-referrer/Permissions-Policy/HSTS, API privées non stockables et X-Powered-By retiré. CSP compatible cache/PPR : inline Next conservé, pas de prétention de CSP stricte à nonce. Limites distribuées Redis par opération et IP Vercel/compte authentifié, fenêtres expirantes1–10min,429Retry-After, refus503 en panne ; aucune IP brute dans les clés. Notifications prestataires/maintenance exclues des limites utilisateur. Réponse session publique limitée au statut.

@@ -53,7 +53,7 @@ test('Parcours HTTP : Telegram confirmé → commandes Redis → Stripe et SasPa
       const callback={id:`cb_${user}`,from:{id:user,is_bot:false},message:{chat:{id:user,type:'private'}},data:prompt.reply_markup.inline_keyboard[0][0].callback_data};
       const forged=await telegram({callback_query:{...callback,from:{id:user+1,is_bot:false}}});assert.equal((await forged.json()).ignored,true);
       const confirm=await telegram({callback_query:callback});assert.equal(confirm.status,200);assert.match((await confirm.json()).text,/Compte associé/);
-      const session=await fetch(origin+'/api/premium/auth/session',{headers:{cookie}});assert.deepEqual(await session.json(),{status:'connected'});
+      const session=await fetch(origin+'/api/premium/auth/session',{headers:{cookie}});const sessionBody=await session.json();assert.equal(sessionBody.status,'connected');assert.match(sessionBody.sessionRevision,/^[a-f0-9]{32}$/);assert.equal(sessionBody.telegramUserId,undefined);
       return cookie;
     }
     const cookie=await login(12345);const otherCookie=await login(54321);const orderId=randomUUID();

@@ -18,7 +18,7 @@ test('Accès canal : test, mauvais propriétaire, paiement incomplet et échéan
  }
 });
 test('Accès canal : invitation courte réutilisée, sans admission immédiate',async()=>{
- const f=fixture();const r=await f.service.invite('123');assert.equal(r.member,false);assert.equal(f.record.status,'invited');
+ const f=fixture();const r=await f.service.invite('123');assert.equal(r.member,false);assert.equal(f.record.status,'invited');assert.equal(r.inviteExpiresAt,Math.floor(now.getTime()/1000)+600);
  assert.deepEqual(f.calls,[['invite',Math.floor(now.getTime()/1000)+600]]);
  await f.service.invite('123');assert.equal(f.calls.length,1);
 });

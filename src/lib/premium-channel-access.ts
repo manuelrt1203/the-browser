@@ -59,7 +59,7 @@ export function channelAccessService(channel: string, store: AccessStore, bot: C
     if (member === "kicked") { await store.assertLease(); await bot.unban(user); }
     const now = Math.floor(clock().getTime() / 1000);
     if (record?.invite && record.inviteExpiresAt! > now && record.status === "invited") {
-      return { member: false, inviteUrl: record.invite, expiresAt: end };
+      return { member: false, inviteUrl: record.invite, inviteExpiresAt: record.inviteExpiresAt, expiresAt: end };
     }
     // Short-lived request link: forwarding it never grants admission to another account.
     const until = Math.min(now + 600, Math.floor(Date.parse(end) / 1000));
@@ -67,7 +67,7 @@ export function channelAccessService(channel: string, store: AccessStore, bot: C
     await store.assertLease();
     const link = await bot.invite(until);
     await store.save({ userId: user, channelId: channel, status: "invited", expiresAt: end, invite: link, inviteExpiresAt: until });
-    return { member: false, inviteUrl: link, expiresAt: end };
+    return { member: false, inviteUrl: link, inviteExpiresAt: until, expiresAt: end };
   }
   async function join(user: string, link: string) {
     const record = await load(user);

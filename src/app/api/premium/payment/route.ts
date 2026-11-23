@@ -7,7 +7,7 @@ import { premiumRedis, premiumRedisCommand, validPremiumOrderId } from "@/lib/pr
 import { sasPayCheckoutCustomer } from "@/lib/saspay";
 import { validPremiumPlan, premiumTermsVersion } from "@/lib/subscription";
 import { pricingCountry } from "@/lib/regional-pricing";
-import { regionalPaymentOptions } from "@/lib/regional-payments";
+import { regionalPaymentAvailability } from "@/lib/regional-payments";
 
 export async function POST(request: Request) {
   if (!premiumSalesEnabled()) return new Response(null, { status: 404 });
@@ -40,7 +40,9 @@ export async function POST(request: Request) {
       if (order && order.status !== "pending") return Response.json({ error: "Cette tentative est terminée. Lancez une nouvelle commande." }, { status: 409 });
       if (!order) {
         if (!pricingCountry(countryCode)) return Response.json({error: "Choisissez votre pays de facturation parmi les pays proposés.", attemptCreated: false}, {status: 400});
-        const methods = (await regionalPaymentOptions())[countryCode!]?.[plan];
+        const availability = await regionalPaymentAvailability();
+        if (availability.providers[provider] === "unavailable") return Response.json({error: "La vérification de ce moyen de paiement est momentanément indisponible. Réessayez plus tard.", attemptCreated: false}, {status: 503});
+        const methods = availability.countries[countryCode!]?.[plan];
         if (!methods?.[provider as "stripe" | "saspay"]) return Response.json({error: "Ce moyen de paiement n’est pas disponible pour ce pays et cette formule. Choisissez une autre option.", attemptCreated: false}, {status: 422});
       }
       const stripeClient = provider === "stripe" ? stripeLiveClient() : null;

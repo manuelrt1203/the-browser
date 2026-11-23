@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useRef } from "react";
+import {clientRequest} from "@/lib/client-request";
+import {useRequestCooldown} from "@/lib/use-request-cooldown";
 import { TelegramAccount } from "./TelegramAccount";
 import { PremiumChannelAccess } from "./PremiumChannelAccess";
 import { formatPremiumAmount } from "@/lib/subscription";
@@ -12,35 +14,37 @@ const amount = formatPremiumAmount;
 export function SubscriptionAccount() {
   const [connected, setConnected] = useState(false), [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState("");
+  const {seconds, blocked, remember, clear} = useRequestCooldown();
+  const sessionRevision = useRef("");
   const requestId = useRef(0), connectedRef = useRef(false);
   const requestController = useRef<AbortController | null>(null);
   const abortRequest = useCallback(() => { requestId.current++; requestController.current?.abort(); }, []);
   const refresh = useCallback(async () => {
+    if (blocked()) return;
     requestController.current?.abort();
     const controller = new AbortController();
     requestController.current = controller;
     const signal = controller.signal;
     const id = ++requestId.current;
-    const current = () => !signal?.aborted && id === requestId.current;
+    const current = () => id === requestId.current && connectedRef.current;
     try {
-      const response = await fetch("/api/premium/subscription", { cache: "no-store", signal });
-      if (!response.ok) throw new Error();
-      const data: Account = await response.json();
+      const data = await clientRequest<Account>("/api/premium/subscription", {cache: "no-store", signal});
       if (current()) setAccount(data);
-    } catch { if (current()) { setAccount(null); setError("Votre abonnement est momentanément indisponible. Réessayez plus tard."); } }
+    } catch (e) { if (current()) { remember(e); setAccount(null); setError(e instanceof Error ? e.message : "Votre abonnement est momentanément indisponible. Réessayez plus tard."); } }
     finally { if (current()) setLoading(false); }
-  }, []);
-  const changeConnection = useCallback((value: boolean) => {
-    if (connectedRef.current === value) return;
+  }, [blocked, remember]);
+  const changeConnection = useCallback((value: boolean, revision = "") => {
+    if (connectedRef.current === value && sessionRevision.current === revision) return;
+    sessionRevision.current = revision; clear();
     connectedRef.current = value; abortRequest();
     setConnected(value); setAccount(null); setError(""); setLoading(value);
     if (value) void refresh();
-  }, [abortRequest, refresh]);
+  }, [abortRequest, refresh, clear]);
   useEffect(() => abortRequest, [abortRequest]);
   return <>
     <TelegramAccount onChange={changeConnection} />
     {connected && <section className="mt-6 surface-panel p-6" aria-busy={loading}>
-      <div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold">Votre abonnement</h2><button onClick={() => { setLoading(true); setError(""); void refresh(); }} disabled={loading} className="text-amber-200 underline disabled:opacity-50">Actualiser</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold">Votre abonnement</h2><button onClick={() => { setLoading(true); setError(""); void refresh(); }} disabled={loading || seconds > 0} className="text-amber-200 underline disabled:opacity-50">{seconds > 0 ? `Réessayer dans ${seconds} s` : "Actualiser"}</button></div>
       {loading && <p className="mt-4 text-white/60">Chargement…</p>}
       {error && <p className="mt-4 text-amber-200" role="alert">{error}</p>}
       {account && <>

@@ -6,6 +6,12 @@ export const PREMIUM_SESSION_TTL = 86400;
 export type PremiumIdentity = { telegramUserId: string };
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const validToken = (value: string) => /^[A-Za-z0-9_-]{43}$/.test(value);
+/** Opaque UI revision, domain-separated from the Redis/authentication hash.
+ * It cannot be used as a login cookie and reveals no Telegram identity. */
+export function premiumSessionRevision(token: string) {
+  if (!validToken(token)) throw new Error("Session invalide");
+  return hash(`ui-session:${token}`).slice(0, 32);
+}
 const validCode = (value: string) => /^[A-Za-z0-9_-]{32}$/.test(value);
 const validUser = (value: string) => /^[1-9]\d{0,15}$/.test(value) && Number.isSafeInteger(Number(value));
 
