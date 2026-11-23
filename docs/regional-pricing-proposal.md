@@ -62,3 +62,10 @@ Chaque prix stocké est en unités mineures de sa devise : EUR/CDF/MAD/DZD/MRU/M
 La nouvelle API Live impose un pays proposé ; le navigateur ne peut imposer ni montant, ni devise, ni zone. Un pays hors périmètre n’obtient pas silencieusement le prix CFA. Les deux générations historiques de commandes (mensuel 3000 XAF et plans du 22 novembre) gardent leur tarif, durée, confirmation et consentement d’origine. Les pilotes de test historiques sont conservés séparément et ne simulent pas l’activation Live.
 
 Validation : 165 tests unitaires, intégration HTTP Live et ancien parcours test avec Redis isolé, 14 tests Redis réel isolé ; contrôles de prix/devise, pays invalide, modification du pays refusée, prestataire indisponible, doublons et confirmation. Tests réels sans paiement : six sessions SasPay Sandbox en EUR/XAF/XOF/CDF/MGA/TND créées, validées et annulées ; cinq sessions Stripe test EUR/XAF/XOF/CDF/MGA au prix attendu puis expirées. Chromium : suggestion de pays, 31 pays, prix, changement de moyen, consentement réinitialisé, pays indisponible, absence de débordement 320/390px, reprise d’un ancien 3000 XAF, tableau des tarifs. Aucun débit Live ni modification d’un membre Telegram.
+
+
+## Couverture Live vérifiée après livraison
+
+Code `3c46317`, déploiement Production `dpl_9hy8CowYX9q4qs2JrEvQQ7BZL3cr` Ready sur https://the-browser-one.vercel.app. API publique des options lue le23novembre : même couverture sur les trois formules. Stripe proposé sur29pays (tous sauf TN/MR). SasPay proposé pour CG, CM, GA, BJ, BF, CI, ML, NE, SN, TG, CD, GN, RW. Ces disponibilités sont relues régulièrement et peuvent évoluer chez les prestataires. Tunisie/Mauritanie : grille consultable, commandes bloquées et support proposé. Les réponses privées confirment les deux comptes et webhooks ainsi que la maintenance ; aucun encaissement Live de test.
+
+Vérification navigateur des assets effectivement déployés : Chromium320/390px réussi avec compte/paiements simulés (aucun achat Live). Prix,31pays, reprise historique, choix du prestataire et conditions conformes.

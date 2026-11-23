@@ -1,32 +1,32 @@
-﻿country_code;country;zone;currency;monthly;quarterly;annual;status;saspay_public_country_active
-FR;France;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true
-BE;Belgique;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true
-LU;Luxembourg;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;false
-MC;Monaco;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true
-CH;Suisse;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true
-CG;Congo-Brazzaville;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true
-CM;Cameroun;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true
-GA;Gabon;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true
-CF;République centrafricaine;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true
-TD;Tchad;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;false
-GQ;Guinée équatoriale;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;false
-BJ;Bénin;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true
-BF;Burkina Faso;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true
-CI;Côte d’Ivoire;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true
-ML;Mali;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true
-NE;Niger;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true
-SN;Sénégal;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true
-TG;Togo;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true
-CD;République démocratique du Congo;Afrique francophone hors CFA;CDF;6000;16000;60000;approuvé le 23 novembre 2026;true
-GN;Guinée;Afrique francophone hors CFA;GNF;25000;65000;250000;approuvé le 23 novembre 2026;true
-MG;Madagascar;Afrique francophone hors CFA;MGA;12000;32000;120000;approuvé le 23 novembre 2026;true
-RW;Rwanda;Afrique francophone hors CFA;RWF;3500;9500;35000;approuvé le 23 novembre 2026;true
-BI;Burundi;Afrique francophone hors CFA;BIF;8000;21000;80000;approuvé le 23 novembre 2026;true
-DJ;Djibouti;Afrique francophone hors CFA;DJF;500;1300;5000;approuvé le 23 novembre 2026;true
-KM;Comores;Afrique francophone hors CFA;KMF;1250;3300;12500;approuvé le 23 novembre 2026;true
-MA;Maroc;Afrique francophone hors CFA;MAD;25;65;250;approuvé le 23 novembre 2026;true
-DZ;Algérie;Afrique francophone hors CFA;DZD;350;950;3500;approuvé le 23 novembre 2026;true
-TN;Tunisie;Afrique francophone hors CFA;TND;8;21;80;approuvé le 23 novembre 2026;true
-MR;Mauritanie;Afrique francophone hors CFA;MRU;100;270;1000;approuvé le 23 novembre 2026;true
-MU;Maurice;Afrique francophone hors CFA;MUR;125;330;1250;approuvé le 23 novembre 2026;true
-SC;Seychelles;Afrique francophone hors CFA;SCR;50;130;500;approuvé le 23 novembre 2026;true
+﻿country_code;country;zone;currency;monthly;quarterly;annual;status;saspay_public_country_active;stripe_live_2026_11_23;saspay_live_2026_11_23
+FR;France;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true;true;false
+BE;Belgique;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true;true;false
+LU;Luxembourg;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;false;true;false
+MC;Monaco;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true;true;false
+CH;Suisse;Europe francophone;EUR;4.57;13;50;approuvé le 23 novembre 2026;true;true;false
+CG;Congo-Brazzaville;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+CM;Cameroun;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+GA;Gabon;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+CF;République centrafricaine;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;false
+TD;Tchad;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;false;true;false
+GQ;Guinée équatoriale;Afrique CFA centrale;XAF;1500;4000;15000;approuvé le 23 novembre 2026;false;true;false
+BJ;Bénin;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+BF;Burkina Faso;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+CI;Côte d’Ivoire;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+ML;Mali;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+NE;Niger;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+SN;Sénégal;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+TG;Togo;Afrique CFA occidentale;XOF;1500;4000;15000;approuvé le 23 novembre 2026;true;true;true
+CD;République démocratique du Congo;Afrique francophone hors CFA;CDF;6000;16000;60000;approuvé le 23 novembre 2026;true;true;true
+GN;Guinée;Afrique francophone hors CFA;GNF;25000;65000;250000;approuvé le 23 novembre 2026;true;true;true
+MG;Madagascar;Afrique francophone hors CFA;MGA;12000;32000;120000;approuvé le 23 novembre 2026;true;true;false
+RW;Rwanda;Afrique francophone hors CFA;RWF;3500;9500;35000;approuvé le 23 novembre 2026;true;true;true
+BI;Burundi;Afrique francophone hors CFA;BIF;8000;21000;80000;approuvé le 23 novembre 2026;true;true;false
+DJ;Djibouti;Afrique francophone hors CFA;DJF;500;1300;5000;approuvé le 23 novembre 2026;true;true;false
+KM;Comores;Afrique francophone hors CFA;KMF;1250;3300;12500;approuvé le 23 novembre 2026;true;true;false
+MA;Maroc;Afrique francophone hors CFA;MAD;25;65;250;approuvé le 23 novembre 2026;true;true;false
+DZ;Algérie;Afrique francophone hors CFA;DZD;350;950;3500;approuvé le 23 novembre 2026;true;true;false
+TN;Tunisie;Afrique francophone hors CFA;TND;8;21;80;approuvé le 23 novembre 2026;true;false;false
+MR;Mauritanie;Afrique francophone hors CFA;MRU;100;270;1000;approuvé le 23 novembre 2026;true;false;false
+MU;Maurice;Afrique francophone hors CFA;MUR;125;330;1250;approuvé le 23 novembre 2026;true;true;false
+SC;Seychelles;Afrique francophone hors CFA;SCR;50;130;500;approuvé le 23 novembre 2026;true;true;false
