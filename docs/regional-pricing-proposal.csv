@@ -1,0 +1,32 @@
+﻿country_code;country;zone;currency;monthly;quarterly;annual;status;saspay_public_country_active
+FR;France;Europe francophone;EUR;4.57;13;50;tarifs EUR conservés;true
+BE;Belgique;Europe francophone;EUR;4.57;13;50;tarifs EUR conservés;true
+LU;Luxembourg;Europe francophone;EUR;4.57;13;50;tarifs EUR conservés;false
+MC;Monaco;Europe francophone;EUR;4.57;13;50;tarifs EUR conservés;true
+CH;Suisse;Europe francophone;EUR;4.57;13;50;tarifs EUR conservés;true
+CG;Congo-Brazzaville;Afrique CFA centrale;XAF;1500;4000;15000;base CFA conservée, extension par pays proposée;true
+CM;Cameroun;Afrique CFA centrale;XAF;1500;4000;15000;base CFA conservée, extension par pays proposée;true
+GA;Gabon;Afrique CFA centrale;XAF;1500;4000;15000;base CFA conservée, extension par pays proposée;true
+CF;République centrafricaine;Afrique CFA centrale;XAF;1500;4000;15000;base CFA conservée, extension par pays proposée;true
+TD;Tchad;Afrique CFA centrale;XAF;1500;4000;15000;base CFA conservée, extension par pays proposée;false
+GQ;Guinée équatoriale;Afrique CFA centrale;XAF;1500;4000;15000;base CFA conservée, extension par pays proposée;false
+BJ;Bénin;Afrique CFA occidentale;XOF;1500;4000;15000;alignement CFA proposé;true
+BF;Burkina Faso;Afrique CFA occidentale;XOF;1500;4000;15000;alignement CFA proposé;true
+CI;Côte d’Ivoire;Afrique CFA occidentale;XOF;1500;4000;15000;alignement CFA proposé;true
+ML;Mali;Afrique CFA occidentale;XOF;1500;4000;15000;alignement CFA proposé;true
+NE;Niger;Afrique CFA occidentale;XOF;1500;4000;15000;alignement CFA proposé;true
+SN;Sénégal;Afrique CFA occidentale;XOF;1500;4000;15000;alignement CFA proposé;true
+TG;Togo;Afrique CFA occidentale;XOF;1500;4000;15000;alignement CFA proposé;true
+CD;République démocratique du Congo;Afrique francophone hors CFA;CDF;6000;16000;60000;proposition;true
+GN;Guinée;Afrique francophone hors CFA;GNF;25000;65000;250000;proposition;true
+MG;Madagascar;Afrique francophone hors CFA;MGA;12000;32000;120000;proposition;true
+RW;Rwanda;Afrique francophone hors CFA;RWF;3500;9500;35000;proposition;true
+BI;Burundi;Afrique francophone hors CFA;BIF;8000;21000;80000;proposition;true
+DJ;Djibouti;Afrique francophone hors CFA;DJF;500;1300;5000;proposition;true
+KM;Comores;Afrique francophone hors CFA;KMF;1250;3300;12500;proposition;true
+MA;Maroc;Afrique francophone hors CFA;MAD;25;65;250;proposition;true
+DZ;Algérie;Afrique francophone hors CFA;DZD;350;950;3500;proposition;true
+TN;Tunisie;Afrique francophone hors CFA;TND;8;21;80;proposition;true
+MR;Mauritanie;Afrique francophone hors CFA;MRU;100;270;1000;proposition;true
+MU;Maurice;Afrique francophone hors CFA;MUR;125;330;1250;proposition;true
+SC;Seychelles;Afrique francophone hors CFA;SCR;50;130;500;proposition;true

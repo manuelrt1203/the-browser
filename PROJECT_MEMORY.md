@@ -1,6 +1,6 @@
 # Mémoire du projet — The Browser
 
-Mise à jour : 22 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+Mise à jour : 23 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
 ## État actuel — 22 novembre 2026
 
@@ -9,6 +9,14 @@ Mise à jour : 22 novembre 2026. Ce document décrit les décisions du propriét
 - Les essais Sandbox/Stripe test sont distincts et fermés sur le domaine Production. SasPay Sandbox paiement→webhook→commande Redis testé, signature rétablie. Aucun paiement/débit Live de test n’a été déclenché par l’agent ; premier règlement humain et attribution Live complète restent à observer.
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Code applicatif vérifié : 159 tests, lint sans erreur (17 warnings d’outillage), build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
+
+## Grille pays et zones — 23 novembre 2026, proposition
+
+Le propriétaire demande une grille Europe francophone en EUR et des tarifs adaptés par pays africain ; il confirme de commencer par l’Afrique francophone. Préparation concrète : docs/regional-pricing-proposal.md et CSV détaillé31pays (5Europe,26Afrique). Bases conservées : EUR4,57/13/50 et CFA1500/4000/15000 pour1/3/12 mois. Les montants locaux horsCFA sont des propositions commerciales arrondies, sans validation du propriétaire ni prétention de taux de change/pouvoir d’achat mesuré. Aucun prix de Production, commande, droit ni configuration de paiement modifié.
+
+Principe proposé : le pays de facturation choisirait une grille/devise serveur, indépendante du choix Stripe/SasPay ; la référence EUR devra aussi s’appliquer avec SasPay pour un pays européen, au lieu de convertir le prix source africain. Pays/devise/prix/plan/version figés dans chaque nouvelle commande ; anciennes offres et consentements préservés. La politique de contrôle du pays et les moyens réellement disponibles restent à préciser avant implémentation.
+
+Vérification publique SasPay HTTP200 /countries/ : pays/codes/devises consultés le23novembre. Ce référentiel ne garantit pas un réseau payin disponible pour le marchand ; /pricing/my-rates/ authentifié à consulter avant activation. LU,TD,GQ inactifs dans la liste publique. Suisse cotéeCHF dans le référentiel mais proposée facturéeEUR selon le souhait Europe. Ne pas considérer les pseudo-pays SasPay XC/XX comme des pays de résidence. Les choix horsCFA, dont RDC en CDF plutôt qu’USD, sont encore à discuter.
 
 ## Nouvelles formules et tarifs — 22 novembre 2026
 
