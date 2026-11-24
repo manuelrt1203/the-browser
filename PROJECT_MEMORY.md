@@ -1,14 +1,14 @@
 # Mémoire du projet — The Browser
 
-Mise à jour : 23 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+Mise à jour : 24 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
-## État actuel — 23 novembre 2026
+## État actuel — 24 novembre 2026
 
 - Production : grille régionale31pays appliquée sur /premium : pays confirmé→prix/devise, formule1/3/12mois. EUR4,57/13/50 ; XAF/XOF1500/4000/15000 ; autres monnaies selon la grille approuvée. Moyens vérifiés côté serveur : Stripe29pays, SasPay13pays ; Tunisie/Mauritanie sans moyen disponible pour le moment. Renouvellement manuel, Telegram/consentement obligatoires et anciens prix/durées préservés.
-- Contrôle privé final : comptes/API et destinations webhook Live vérifiés, Stripe encaissements/virements autorisés, maintenance cron-job.org fraîche. PREMIUM_SALES_ENABLED, STRIPE_LIVE_ENABLED, SASPAY_LIVE_ENABLED à1 en Production. Dernier déploiement vérifié Ready : dpl_5p1hVQEXxSBioYpRAEyiYDhSYQLY (sourcecdfbfd2).
+- Contrôle privé final : comptes/API et destinations webhook Live vérifiés, Stripe encaissements/virements autorisés, maintenance cron-job.org fraîche. PREMIUM_SALES_ENABLED, STRIPE_LIVE_ENABLED, SASPAY_LIVE_ENABLED à1 en Production. Dernier déploiement vérifié Ready : dpl_ErycLeV2a42CRRDo1fL19jQJa4Ak (source174bfe1), revérifié le24novembre.
 - Les essais Sandbox/Stripe test sont distincts et fermés sur le domaine Production. SasPay Sandbox paiement→webhook→commande Redis testé, signature rétablie. Aucun paiement/débit Live de test n’a été déclenché par l’agent ; premier règlement humain et attribution Live complète restent à observer.
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
-- Code applicatif vérifié :171tests unitaires,15résultats Redis isolé, lint ciblé sans erreur/avertissement, build réussi et intégrations HTTP isolées. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
+- Code applicatif vérifié :178tests unitaires, parcours HTTP/Redis isolés, lint ciblé sans erreur/avertissement et build réussis. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
 
 ## Reprise des parcours privés — 23 novembre 2026
 
@@ -18,7 +18,7 @@ Confidentialité renforcée entre onglets : session API=status + révision opaqu
 
 Disponibilités : états des prestataires ready/disabled/unavailable, panne distinguée d’un pays sans moyen. Prestataire sain utilisable, bouton de revérification. Cache à requête unique et TTL après résolution5min/15s ; erreurs inattendues également réessayables15s après. Avant création, le serveur refuse la disponibilité non vérifiable avec preuve qu’aucune tentative n’a été créée.
 
-Validation locale :178tests unitaires, parcours HTTP Live et test/Redis isolés réussis, lint/TypeScript/build réussis. Chromium Production : perte de réponse sans doublon, UUID/reprise, échéance lien, session connecté→connecté, réponses tardives,429, historique bloqué/reprise, panne vs couverture, anciens prix et320/390px. Détails dans docs/payment-resilience.md. Aucun débit réel, changement de secret ni mutation d’un membre Telegram. Livraison Production en cours.
+Validation locale :178tests unitaires, parcours HTTP Live et test/Redis isolés réussis, lint/TypeScript/build réussis. Chromium Production : perte de réponse sans doublon, UUID/reprise, échéance lien, session connecté→connecté, réponses tardives,429, historique bloqué/reprise, panne vs couverture, anciens prix et320/390px. Détails dans docs/payment-resilience.md. Aucun débit réel, changement de secret ni mutation d’un membre Telegram. Livré sur main174bfe1 et Production dpl_ErycLeV2a42CRRDo1fL19jQJa4Ak Ready. Contrôles du23novembre : catalogue200/109cartes, options31pays, prestatairesready, achat anonyme401, readiness privé200 avec comptes/webhooksStripe/SasPay et maintenance vérifiés. Chromium des vrais assets Production, comptes et paiements simulés : reprise, session, liens expirés,429 et absence de violationCSP validés via transport fetch géré/CDP. Reprise du24novembre : même déploiement Ready, options200/31pays et deuxprestatairesready ; readiness privé200, comptes/webhooks vérifiés et ordonnanceur frais. Aucun nouveau déploiement applicatif nécessaire pour finaliser ce compte rendu.
 
 ## Sécurité et fluidité — 23 novembre 2026
 

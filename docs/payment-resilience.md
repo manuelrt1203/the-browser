@@ -30,3 +30,10 @@ Cache à lecture unique pendant une requête en cours, durée calculée **après
 - Parcours HTTP Live simulé et ancien parcours Stripe/SasPay test avec Redis isolé réussis ; confirmations, consentement, signatures, tarifs et propriétaire inchangés. La réponse session test vérifie la présence de la révision et l’absence de l’identité Telegram.
 - Chromium build Production avec comptes et prestataires simulés : réponse paiement perdue/UUID conservé/un seul POST, vérification sans nouveau paiement, lien réellement expiré, session connecté→connecté remplacée, invitation tardive ignorée, compteur429, historique bloqué puis repris, panne distincte du pays non couvert, tarifs31pays, ancien prix,320/390px et aucune violation CSP.
 - Lint ciblé, TypeScript et build réussis. Ces tests ne remplacent pas l’observation du premier achat Live humain.
+
+
+## Livraison et reprise vérifiées
+
+Code `174bfe1` sur main, Production `dpl_ErycLeV2a42CRRDo1fL19jQJa4Ak` Ready sur https://the-browser-one.vercel.app. Vérifications initiales du23novembre : catalogue200 avec109cartes, options31pays et prestatairesStripe/SasPay `ready`, paiement anonyme401, comptes/webhooks et maintenance confirmés par contrôle privé. Chromium a également vérifié les vrais assets publics, avec comptes et paiements simulés ; le transport des ressources publiques utilise fetch géré/CDP dans cette machine. Aucun débit réel ni message/mutation de membre Telegram.
+
+Le24novembre, à la reprise : même déploiement toujoursReady ; options200 avec31pays et deuxprestatairesready ; contrôle privé200 avec comptes, webhooks et ordonnanceur frais. Seul le compte rendu et la mémoire sont finalisés à cette reprise, sans nouvelle publication applicative.
