@@ -30,12 +30,11 @@ function DetailContent({ item, saved, onToggle, error }: { item: Title; saved: b
         <div className="detail-genres">{item.genres.map(genre => <span key={genre}>{genre}</span>)}</div>
         <h3>Synopsis</h3><p className="detail-synopsis">{item.synopsis || "Le synopsis de ce titre n’est pas encore disponible."}</p>
         <div className="detail-actions">
-          {item.telegramUrl && <a href={item.telegramUrl} target="_blank" rel="noopener noreferrer" className="button-primary">{item.freeJoinRequired ? item.telegramPublications?.[0]?.protectedFile ? "Regarder / Télécharger · Gratuit" : "Accès gratuit via le bot" : "Ouvrir dans le canal"} <span aria-hidden="true">↗</span><span className="sr-only"> — nouvel onglet</span></a>}
+          {item.telegramUrl && <a href={item.telegramUrl} target="_blank" rel="noopener noreferrer" className="button-primary">Ouvrir dans le canal <span aria-hidden="true">↗</span><span className="sr-only"> — nouvel onglet</span></a>}
           <button type="button" className="detail-save" aria-pressed={saved} onClick={onToggle}>{saved ? "♥ Dans ma liste" : "♡ Ajouter à voir"}</button>
         </div>
         {error && <p className="watchlist-inline-error" role="alert">{error}</p>}
         <a href={item.watchUrl} target="_blank" rel="noopener noreferrer" className="legal-offers">Consulter les offres légales en France<span className="sr-only"> — nouvel onglet</span></a>
-        {item.freeJoinRequired && <p className="mt-3 text-sm text-white/65">Le bot vérifie votre adhésion gratuite au canal avant de vous donner accès au fichier.</p>}
         <div className="detail-provenance">{item.episodes?.length ? <p>{item.episodes.length} épisode{item.episodes.length > 1 ? "s" : ""} référencé{item.episodes.length > 1 ? "s" : ""} par TMDB.</p> : null}{item.sourceEpisodes?.length ? <p>{item.sourceEpisodes.length} épisode{item.sourceEpisodes.length > 1 ? "s" : ""} vérifié{item.sourceEpisodes.length > 1 ? "s" : ""} dans le canal ; numérotation distincte des références TMDB.</p> : null}</div>
       </div>
     </div>

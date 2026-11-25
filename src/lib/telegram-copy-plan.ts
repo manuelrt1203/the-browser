@@ -21,7 +21,6 @@ export function findCopyPlans(query: string, posts: ChannelPost[]): CopyPlan[] {
   if (!byId && !normalize(q)) return [];
   const plans = new Map<string, CopyPlan & { names: Set<string> }>();
   for (const post of posts) {
-    if (post.freeAccessToken) continue; // A free-gated public post is an announcement, not its private video.
     if (!Number.isSafeInteger(post.messageId) || post.messageId < 1 || !/\.(mp4|mkv|avi|mov|webm|m4v|mpeg|mpg|ts)$/i.test(post.fileName ?? "")) continue;
     for (const title of post.titles) {
       if (kind && kind !== title.kind) continue;

@@ -28,17 +28,7 @@ globalThis.fetch = async (input, options = {}) => {
     return Response.json({id,title:ref?.title??'Nouveau film fixture',name:ref?.title??'Nouveau film fixture',release_date:`${ref?.year??2026}-01-01`,first_air_date:`${ref?.year??2026}-01-01`,overview:'Synopsis de test',poster_path:'/fixture.jpg',genres:[]});
   }
   if(url.hostname==='api.telegram.org'){
-    if(url.pathname.endsWith('/getChatMember')){const body=JSON.parse(options.body);return Response.json({ok:true,result:{status:body.user_id===23456?'creator':body.user_id===9999001?'left':'administrator'}});}
-    if(process.env.TELEGRAM_FREE_GATE_ENABLED==='1'){
-      const method=url.pathname.split('/').at(-1),body=JSON.parse(options.body);
-      if(method==='getChat')return Response.json({ok:true,result:{id:Number(body.chat_id),type:'channel',username:'TheBrowser365',has_protected_content:true}});
-      if(['sendMessage','sendPhoto','sendVideo','sendDocument','editMessageMedia'].includes(method)){
-        const command=async args=>JSON.parse((await execFile(process.env.REDIS_TEST_CLI,['-s',process.env.PREMIUM_TEST_REDIS_SOCKET,'-2','--json',...args.map(String)])).stdout);
-        await command(['RPUSH','fixture:telegram-free:sent',JSON.stringify({method,body})]);
-        const id=180000+await command(['INCR','fixture:telegram-free:counter']);
-        return Response.json({ok:true,result:{message_id:method==='editMessageMedia'?body.message_id:id,date:Math.floor(Date.now()/1000),chat:{id:Number(body.chat_id)},...(['sendPhoto','editMessageMedia'].includes(method)?{photo:[{}]}:{})}});
-      }
-    }
+    if(url.pathname.endsWith('/getChatMember')){const body=JSON.parse(options.body);return Response.json({ok:true,result:{status:body.user_id===23456?'creator':'administrator'}});}
     throw new Error('Unexpected Telegram mutation in payment fixture');
   }
   if (url.hostname === 'api.stripe.com') {

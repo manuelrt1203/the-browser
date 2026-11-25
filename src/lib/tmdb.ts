@@ -6,8 +6,6 @@ import { normalizeTitle } from "./telegram-resolution.ts";
 import type { Reference } from "./telegram-resolution.ts";
 
 import { hasCatalogueStorage, readChannelState } from "@/lib/telegram-store";
-import {freePublicPosts} from "./telegram-free.ts";
-import {telegramFreeEnabled} from "./telegram-free-links.ts";
 
 const API = "https://api.themoviedb.org/3";
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
@@ -104,7 +102,7 @@ export async function getCatalogue(): Promise<Title[]> {
   cacheLife("hours");
   cacheTag("catalogue");
 
-  const storedPosts = {...(hasCatalogueStorage() ? (await readChannelState()).posts : {}), ...await freePublicPosts()};
+  const storedPosts = hasCatalogueStorage() ? (await readChannelState()).posts : {};
   const channelPosts = Object.values(storedPosts);
   const selection: Reference[] = requestedTitles.flatMap(({ kind, id, year }) => id === undefined ? [] : [{ kind, id, year }]);
   // Les mauvais IDs restent parfois dans Redis après correction du code : exclure
@@ -139,12 +137,11 @@ export async function getCatalogue(): Promise<Title[]> {
           .map((ref) => ({ season: ref.sourceEpisode!.season, episode: ref.sourceEpisode!.episode }));
         if (sourceEpisodes.length) title.sourceEpisodes = [...new Map(sourceEpisodes.map((ep) => [`${ep.season}:${ep.episode}`, ep])).values()]
           .sort((a, b) => a.season - b.season || a.episode - b.episode);
-        const publications = publicationsForTitle(title.id, storedPosts, telegramFreeEnabled() ? process.env.TELEGRAM_CHANNEL_ID : undefined);
+        const publications = publicationsForTitle(title.id, storedPosts);
         if (publications.length) {
           title.telegramUrl = publications[0].url;
           title.latestPublicationId = latestPublicationIdForTitle(title.id, storedPosts);
           title.telegramPublications = publications;
-          if (publications[0].requiresFreeJoin) title.freeJoinRequired = true;
         }
         titles.push(title);
       }

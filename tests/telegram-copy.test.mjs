@@ -17,8 +17,3 @@ test('copier : ambiguïtés conservées, type/année/id exacts et vidéos seulem
  assert.equal(findCopyPlans('serie-1234568',posts)[0].kind,'serie');
  assert.equal(findCopyPlans('Titre absent',posts).length,0);
 });
-
-test('une annonce gratuite protégée ne devient pas une vidéo copiée vers Premium',()=>{
- const announcement={...post(10,'film',1234567,'Un titre'),freeAccessToken:'a'.repeat(24)};
- assert.deepEqual(findCopyPlans('Un titre',[announcement]),[]);
-});

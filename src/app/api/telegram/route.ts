@@ -8,7 +8,6 @@ import { premiumTelegramReply } from "@/lib/premium-auth";
 import { hasTelegramWebhookSecret, validTelegramWebhookSecret } from "@/lib/telegram-webhook-secret";
 import { after } from "next/server";
 import { telegramCopyService } from "@/lib/telegram-copy";
-import {telegramFreeService, freePublicPosts} from "@/lib/telegram-free";
 
 export const maxDuration = 300;
 
@@ -40,12 +39,6 @@ export async function POST(request: Request) {
   }
   if (update.message || update.callback_query) {
     try {
-      const free = await telegramFreeService().command(update);
-      if (free) {
-        if (free.work) after(async () => {try {await free.work!();} finally {revalidateTag("catalogue", {expire: 0});}});
-        else if (free.changed) revalidateTag("catalogue", {expire: 0});
-        return Response.json(free.reply);
-      }
       const copier = telegramCopyService();
       const copy = await copier.command(update);
       if (copy) {
@@ -69,18 +62,17 @@ export async function POST(request: Request) {
   const text = post.text ?? post.caption ?? post.document?.file_name ?? post.video?.file_name ?? "";
   if (typeof text !== "string") return new Response(null, { status: 400 });
   try {
-    const gated = (await freePublicPosts())[`${channel}:${post.message_id}`];
     const fileName = post.document?.file_name ?? post.video?.file_name;
     const entities = post.entities ?? post.caption_entities ?? [];
     if (fileName !== undefined && typeof fileName !== "string") return new Response(null, { status: 400 });
     const links = Array.isArray(entities) ? entities.filter((e) => e?.type === "text_link" && typeof e.url === "string").map((e) => e.url) : [];
-    const parsed = gated ? {titles: gated.titles, pending: [], review: []} : await resolvePublication({ text, fileName, links, channelId: channel, messageId: post.message_id });
+    const parsed = await resolvePublication({ text, fileName, links, channelId: channel, messageId: post.message_id });
     const changed = await saveChannelPost(channel, {
       messageId: post.message_id,
       version: post.edit_date ?? post.date,
       updateId: update.update_id,
       text,
-      ...(gated ? {fileName: gated.fileName, freeAccessToken: gated.freeAccessToken} : fileName ? { fileName } : {}),
+      ...(fileName ? { fileName } : {}),
       resolutionVersion: RESOLUTION_VERSION,
       titles: parsed.titles,
       pending: parsed.pending,
