@@ -57,4 +57,12 @@ Parcours HTTP Next/Redis avec Telegram simulé : aperçu sans publication, confi
 
 Aucun fichier réel publié, remplacé ou livré par les tests automatisés ; aucune vidéo historique modifiée sans commande/confirmation du propriétaire. Le premier essai humain du bot reste à effectuer avec un fichier original.
 
+## Livraison vérifiée
+
+Le25novembre2026 : source `463e6f1` sur main, déploiement Production `dpl_HBmNwJ616VbJDSAT22Y9y9WZvMxj` Ready, domaine https://the-browser-one.vercel.app associé, `TELEGRAM_FREE_GATE_ENABLED=1`. Diagnostic gratuit authentifié200 : prêt, droits de publication/édition confirmés,0annonce protégée et869médias historiques restants. Diagnostic anonyme401. Catalogue200 avec liens du bot et sans référence privée ; paiements Stripe/SasPay et leurs webhooks vérifiés, maintenance fraîche.
+
+Menu privé `/gratuit` installé. Menu spécifique du propriétaire : `/publiergratuit` et `/protegergratuit` ajoutés, commandes `/copier` et `/copie` préservées. Webhook existant conservé, mises à jour privées et callbacks déjà autorisés ;0update en attente, aucune erreur signalée. Aucune vidéo ni annonce réelle créée par cette activation.
+
+Chromium avec les vrais assets Production : fiche de Tout le monde déteste Chris, CTA et liens historiques vers le bot, mention d’adhésion gratuite, absence de référence de fichier privée et affichage320/390px validés. Ressources publiques transportées via fetch géré/CDP pour ce contrôle ; aucune conversation Telegram ouverte. Catalogue public :109cartes.
+
 Référence de méthodes consultée : SDK python-telegram-bot, `src/telegram/_bot.py` (getChatMember, sendVideo/sendDocument/sendPhoto, editMessageMedia) ; le site core.telegram.org n’était pas accessible depuis la politique réseau de cette machine. Les méthodes de lecture ont également été vérifiées sur le vrai bot, sans message envoyé.
