@@ -221,3 +221,8 @@ Affiche TMDB et vidéos envoyées silencieusement ; légendes d’origine conser
 Configuration vérifiée le19novembre2026 : TELEGRAM_COPY_ENABLED=1 en Production, menu privé copier/copie installé pour l’unique propriétaire, propriétaire réel autorisé, webhook existant inchangé et messages privés actifs sans erreur. Tâche cron-job.org8900469 activée chaque minute, première exécution réelle HTTP200 ; maintenance d’expiration8897858 conservée. Worker anonyme401, lecture privée200 (file vide), exécution privée200 idle. Aucun faux message de propriétaire injecté ni nouveau média envoyé pour valider la fonctionnalité. Le premier essai humain en conversation privée reste à observer.
 
 Livraison finale :01a6f7e puis992e179 sur main, dpl_HdmWtrqnRWs1wXCxjgTsTRnAo7WW Ready sur le site public. 155 tests habituels,8 résultats Redis isolé et parcours HTTP webhook/paiements réussis ; lint, TypeScript et build réussis. Correspondances réelles vérifiées sans envoi : Chris88 vidéos et John Wick : Chapitre4 disponible.
+
+
+## Adhésion gratuite avant accès — 25 novembre 2026
+
+Le parcours du bot gratuit et les commandes /publiergratuit et /protegergratuit sont décrits dans [telegram-free-access.md](telegram-free-access.md). Les anciens liens directs restent techniquement publics tant que leur vidéo n’est pas remplacée par une annonce. Aucun webhook supplémentaire ni changement du secret existant. Les paiements et accès Premium demeurent distincts.

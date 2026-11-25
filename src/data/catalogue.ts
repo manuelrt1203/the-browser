@@ -20,6 +20,7 @@ export type Title = {
   watchUrl: string;
   /** Publication de référence dans le canal ; absente si aucune association n’existe. */
   telegramUrl?: string;
+  freeJoinRequired?: boolean;
   /** Dernière publication du canal, indépendante de l’année de sortie et des modifications. */
   latestPublicationId?: number;
   telegramPublications?: TelegramPublication[];

@@ -1,6 +1,6 @@
 # Mémoire du projet — The Browser
 
-Mise à jour : 24 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
+Mise à jour : 25 novembre 2026. Ce document décrit les décisions du propriétaire et les résultats vérifiés. Il distingue le code livré, les observations en production communiquées par le propriétaire et les fonctionnalités encore à concevoir.
 
 ## État actuel — 24 novembre 2026
 
@@ -9,6 +9,16 @@ Mise à jour : 24 novembre 2026. Ce document décrit les décisions du propriét
 - Les essais Sandbox/Stripe test sont distincts et fermés sur le domaine Production. SasPay Sandbox paiement→webhook→commande Redis testé, signature rétablie. Aucun paiement/débit Live de test n’a été déclenché par l’agent ; premier règlement humain et attribution Live complète restent à observer.
 - Support réel : manuelrt1203@gmail.com ; nom/statut déclarés Rodrigue Emmanuel, entrepreneur individuel en France. Adresse de domiciliation et immatriculation manquantes signalées. Ouverture explicitement demandée malgré ces informations incomplètes ; ne pas prétendre à une validation administrative.
 - Code applicatif vérifié :178tests unitaires, parcours HTTP/Redis isolés, lint ciblé sans erreur/avertissement et build réussis. Ordonnanceur externe actif toutes5min, GitHub en secours. Ne pas réappliquer les anciens diagnostics de clé Stripe401 ou de marqueur HMAC : ils sont résolus.
+
+## Adhésion gratuite au canal public — 25 novembre 2026
+
+Le propriétaire confirme le parcours gratuit, pas un abonnement Premium : catalogue/annonce→bot→getChatMember→rejoindre et vérifier→vidéo/fichier. Code préparé avec TELEGRAM_FREE_GATE_ENABLED Production seulement, préfixesfree distincts des paiements/authentification. Le catalogue privilégie les annonces protégées et dirige aussi les médias historiques vers une vérification du bot.
+
+Limite confirmée : une ancienne vidéo restée dans le canal public demeure accessible par son URL sans adhésion. L’ancien parcours fournit donc son lien après vérification, sans contourner la protection Telegram. Pour une vraie protection : fichier original envoyé en privé au bot, commande /publiergratuit en réponse, aperçu puis confirmation du propriétaire ; affiche/bouton seulement dans le canal. /protegergratuit URL en réponse à l’original prépare un remplacement ciblé de la vidéo par l’affiche après sauvegarde du file_id privé et confirmation. ID public conservé, aucun deleteMessage ni migration globale. Le25novembre, source has_protected_content=true constaté : les anciens transferts sont bloqués ; originaux nécessaires, pas de modification de cette configuration.
+
+Publication/remplacement/annulation/désactivation uniquement par le creator Telegram actuel du canal public et l’auteur du brouillon. Autre canal/Premium transféré refusé. Références de fichiers privées, tokens opaques publics, manifeste sans file_id. Redis distinct des paiements, limite12/min/utilisateur, déduplication24h. Publication réservée atomiquement ; ambiguïté jamais relancée automatiquement, rejet explicite réessayable par nouvelle confirmation. /copier ignore les annonces protégées pour éviter de prendre une affiche pour une vidéo. Modifications payantes/Premium et nouveaux webhooks exclus.
+
+Contrôle réel en lecture : @Thebrowser365_bot admin public, peut publier/éditer,1creator ; menus privés existants consultés sans effacement. Validation :181unitaires,14résultats Redis gratuits +8copies isolées, HTTP Next/Redis avec Telegram simulé (non-membre, membre, aperçu, confirmation, manifeste et HTML sans référence privée), Chromium320/390px, lint/TypeScript/build réussis. Aucun fichier réel envoyé/remplacé ni message de test envoyé. Détails et commandes : docs/telegram-free-access.md. Drapeau Production ajouté ; livraison applicative et vérification finale en cours.
 
 ## Reprise des parcours privés — 23 novembre 2026
 

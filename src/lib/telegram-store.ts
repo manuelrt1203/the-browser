@@ -10,6 +10,8 @@ export type ChannelPost = {
   titles: { kind: "film" | "serie"; id: number; expectedTitle?: string; verifiedNames?: string[]; year?: number; season?: number; episode?: number; sourceEpisode?: { season: number; episode: number; verifiedBy: "owner" } }[];
   resolutionVersion?: number;
   fileName?: string;
+  /** Public bot token only. The Telegram file_id is stored separately server-side. */
+  freeAccessToken?: string;
   review?: { input: string; reason: string; candidates?: { kind: "film" | "serie"; id: number; title: string; year?: number }[] }[];
   pending: string[];
 };
